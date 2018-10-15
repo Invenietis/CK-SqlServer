@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace CK.SqlServer.Impl
+namespace CK.SqlServer.StObjSupport
 {
     /// <summary>
     /// Interface marker definition for scoped services.

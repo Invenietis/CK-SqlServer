@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CK.SqlServer", "CK.SqlServe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CK.SqlServer.Tests", "Tests\CK.SqlServer.Tests\CK.SqlServer.Tests.csproj", "{BBB00A65-7380-45A8-8167-2F981AA6AA1F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CK.SqlServer.Tests", "Tests\CK.SqlServer.NetCore.Tests\CK.SqlServer.NetCore.Tests.csproj", "{B608E87E-A2EA-4BE0-8682-6F07D4B6AF77}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CK.SqlServer.NetCore.Tests", "Tests\CK.SqlServer.NetCore.Tests\CK.SqlServer.NetCore.Tests.csproj", "{B608E87E-A2EA-4BE0-8682-6F07D4B6AF77}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
