@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Common\Shared.props" />
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+    <Description>
+      Contains ISqlTransactionCallContext.
+    </Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CK.SqlServer/CK.SqlServer.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  
+</Project>
