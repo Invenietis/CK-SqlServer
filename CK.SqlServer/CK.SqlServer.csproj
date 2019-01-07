@@ -6,7 +6,7 @@
     </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="10.1.2--0042-local" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="0.0.0--023hks0-local" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <PackageReference Include="System.Data.SqlClient" Version="4.5.1" />
