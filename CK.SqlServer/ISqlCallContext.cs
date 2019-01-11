@@ -15,7 +15,7 @@ namespace CK.SqlServer
     /// and manages a cache of <see cref="ISqlConnectionController"/> that can be accessed either by
     /// connection string or by <see cref="ISqlConnectionStringProvider"/>.
     /// </summary>
-    public interface ISqlCallContext : Impl.IScopedAmbientService
+    public interface ISqlCallContext : StObjSupport.IScopedAmbientService
     {
         /// <summary>
         /// Gets the <see cref="ISqlCommandExecutor"/> that must be used to call databases.
