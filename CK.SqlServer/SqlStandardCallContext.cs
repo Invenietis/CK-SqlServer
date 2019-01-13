@@ -219,6 +219,23 @@ namespace CK.SqlServer
         }
 
         /// <summary>
+        /// Finds a controller by its connection. This is required because from the <see cref="SqlConnection.ConnectionString"/>
+        /// may be different than the initialized one (security information may be removed).
+        /// </summary>
+        /// <param name="connection">The connection object.</param>
+        /// <returns>Null or the corresponding controller.</returns>
+        protected Controller FindController( SqlConnection connection )
+        {
+            if( _cache is Controller controller ) return controller.Connection == connection ? controller : null;
+            var cache = (Controller[])_cache;
+            foreach( var c in cache )
+            {
+                if( c.Connection == connection ) return c;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Creates a new <see cref="Controller"/> object.
         /// </summary>
         /// <param name="connectionString">The connection string.</param>

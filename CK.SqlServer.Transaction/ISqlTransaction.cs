@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 
 namespace CK.SqlServer
@@ -15,9 +16,14 @@ namespace CK.SqlServer
         ISqlConnectionTransactionController ConnectionController { get; }
 
         /// <summary>
-        /// Gets whether this transaction has been <see cref="Commit"/> or <see cref="Rollback"/>.
+        /// Gets the status of this transaction.
         /// </summary>
-        bool IsAlive { get; }
+        SqlTransactionStatus Status { get; }
+
+        /// <summary>
+        /// Gets the isolation level of this transaction.
+        /// </summary>
+        IsolationLevel IsolationLevel { get; }
 
         /// <summary>
         /// Gets whether this transaction is a nested one.
@@ -29,13 +35,14 @@ namespace CK.SqlServer
 
         /// <summary>
         /// Commits this transaction and any active nested transactions.
+        /// Throws a <see cref="InvalidOperationException"/> if <see cref="Status"/> is not <see cref="SqlTransactionStatus.Opened"/>.
         /// </summary>
-        /// <returns>False if <see cref="Rollback"/> has been called, true if the actual primary transaction is still alive.</returns>
-        bool Commit();
+        void Commit();
 
         /// <summary>
         /// Rollbacks all transactions.
+        /// Throws a <see cref="InvalidOperationException"/> if <see cref="Status"/> is not <see cref="SqlTransactionStatus.Opened"/>.
         /// </summary>
-        void Rollback();
+        void RollbackAll();
     }
 }

@@ -21,7 +21,7 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the current transaction count: the number of <see cref="BeginTransaction(IsolationLevel)"/>
         /// that have no associated <see cref="Commit"/> yet.
-        /// Calling <see cref="Rollback"/> cancels all opened transactions.
+        /// Calling <see cref="RollbackAll"/> cancels all opened transactions.
         /// </summary>
         int TransactionCount { get; }
 
@@ -42,17 +42,15 @@ namespace CK.SqlServer
         ISqlTransaction BeginTransaction( IsolationLevel isolationLevel = IsolationLevel.ReadCommitted );
 
         /// <summary>
-        /// Commits the current transaction (commits the actual Sql transaction if it is is not a nested transaction, ie. <see cref="TransactionCount"/> = 1).
-        /// If no corresponding transaction have been opened (or have been already committed by <see cref="ISqlTransaction.Commit"/>),
-        /// this throws an <see cref="InvalidOperationException"/>, but this can safely be called if a <see cref="Rollback"/> has been called (and in this case, false is returned).
-        /// This  if <see cref="TransactionCount"/> is 1.
+        /// Commits the current transaction (commits the actual Sql transaction if it is is not a nested
+        /// transaction, ie. <see cref="TransactionCount"/> = 1).
+        /// Throws an <see cref="InvalidOperationException"/> if <see cref="TransactionCount"/> is 0.
         /// </summary>
-        /// <returns>False if <see cref="Rollback"/> has been called, true if the actual transaction is still alive.</returns>
-        bool Commit();
-
+        void Commit();
+  
         /// <summary>
         /// Rollbacks all transactions currently opened.
         /// </summary>
-        void Rollback();
+        void RollbackAll();
     }
 }
