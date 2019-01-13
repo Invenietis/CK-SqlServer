@@ -33,7 +33,6 @@ namespace CK.SqlServer.Transaction.Tests
 
             void BeginTranAndCommit( ISqlConnectionTransactionController controller )
             {
-                controller.Connection.State.Should().Be( ConnectionState.Closed );
                 ISqlTransaction tran = controller.BeginTransaction();
                 controller.Connection.State.Should().Be( ConnectionState.Open );
                 tran.IsNested.Should().BeFalse();
@@ -51,37 +50,78 @@ namespace CK.SqlServer.Transaction.Tests
             using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
             {
                 var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                var messageId = DoCommitTest( controller, 0, 0 );
+                messageId.Should().Be( 1, "One message has been created." );
+                messageId = DoRollbackAndDisposeTest( controller, 0, messageId );
+                messageId.Should().Be( 3, "Two messages have been created and cancelled." );
+            }
+        }
+
+        static int DoCommitTest( ISqlConnectionTransactionController controller, int tranCount, int messageId )
+        {
+            var message = Guid.NewGuid().ToString();
+            using( var tran = controller.BeginTransaction() )
+            {
+                tran.Status.Should().Be( SqlTransactionStatus.Opened );
+                controller.TransactionCount.Should().Be( tranCount + 1 );
+                AddMessage( controller, message ).Should().Be( ++messageId );
+                ReadMessage( controller, messageId ).Should().Be( message );
+                tran.Commit();
+                controller.TransactionCount.Should().Be( tranCount );
+                tran.Status.Should().Be( SqlTransactionStatus.Committed );
+            }
+            ReadMessage( controller, messageId ).Should().Be( message );
+            return messageId;
+        }
+
+        static int DoRollbackAndDisposeTest( ISqlConnectionTransactionController controller, int tranCount, int messageId )
+        {
+            var message = Guid.NewGuid().ToString();
+            using( var tran = controller.BeginTransaction() )
+            {
+                tran.Status.Should().Be( SqlTransactionStatus.Opened );
+                controller.TransactionCount.Should().Be( tranCount + 1 );
+                AddMessage( controller, message ).Should().Be( ++messageId );
+                ReadMessage( controller, messageId ).Should().Be( message );
+                tran.RollbackAll();
+                controller.TransactionCount.Should().Be( 0 );
+                tran.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+            }
+            ReadMessage( controller, 2 ).Should().BeNull();
+            message = Guid.NewGuid().ToString();
+            using( var tran = controller.BeginTransaction() )
+            {
+                tran.Status.Should().Be( SqlTransactionStatus.Opened );
+                controller.TransactionCount.Should().Be( 1 );
+                AddMessage( controller, message ).Should().Be( ++messageId );
+                ReadMessage( controller, messageId ).Should().Be( message );
+            }
+            controller.TransactionCount.Should().Be( 0 );
+            ReadMessage( controller, messageId ).Should().BeNull();
+            return messageId;
+        }
+
+        [Test]
+        public void basic_nested_transaction_test()
+        {
+            ResetTranTestTable();
+            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
+            {
+                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                DoCommitTest( controller, 0, 0 ).Should().Be( 1, "messageId from 0 to 1." );
                 using( var tran = controller.BeginTransaction() )
                 {
-                    tran.Status.Should().Be( SqlTransactionStatus.Opened );
-                    controller.TransactionCount.Should().Be( 1 );
-                    AddMessage( controller, "Yo" ).Should().Be( 1 );
-                    ReadMessage( controller, 1 ).Should().Be( "Yo" );
-                    tran.Commit();
-                    controller.TransactionCount.Should().Be( 0 );
-                    tran.Status.Should().Be( SqlTransactionStatus.Committed );
-                }
-                ReadMessage( controller, 1 ).Should().Be( "Yo" );
-                using( var tran = controller.BeginTransaction() )
-                {
-                    tran.Status.Should().Be( SqlTransactionStatus.Opened );
-                    controller.TransactionCount.Should().Be( 1 );
-                    AddMessage( controller, "Ay" ).Should().Be( 2 );
-                    ReadMessage( controller, 2 ).Should().Be( "Ay" );
-                    tran.RollbackAll();
-                    controller.TransactionCount.Should().Be( 0 );
+                    DoCommitTest( controller, 1, 1 ).Should().Be( 2, "messageId from 1 to 2." );
+                    DoCommitTest( controller, 1, 2 ).Should().Be( 3, "messageId from 2 to 3." );
+                    using( var tran2 = controller.BeginTransaction() )
+                    {
+                        DoCommitTest( controller, 2, 3 ).Should().Be( 4, "messageId from 3 to 4." );
+                        DoRollbackAndDisposeTest( controller, 2, 4 ).Should().Be( 6, "messageId from 4 to 6." );
+                        controller.TransactionCount.Should().Be( 0 );
+                        tran2.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                    }
                     tran.Status.Should().Be( SqlTransactionStatus.Rollbacked );
                 }
-                ReadMessage( controller, 2 ).Should().BeNull();
-                using( var tran = controller.BeginTransaction() )
-                {
-                    tran.Status.Should().Be( SqlTransactionStatus.Opened );
-                    controller.TransactionCount.Should().Be( 1 );
-                    AddMessage( controller, "AyAy" ).Should().Be( 3 );
-                    ReadMessage( controller, 3 ).Should().Be( "AyAy" );
-                }
-                controller.TransactionCount.Should().Be( 0 );
-                ReadMessage( controller, 3 ).Should().BeNull();
             }
         }
 
@@ -97,7 +137,8 @@ namespace CK.SqlServer.Transaction.Tests
             _readMessageCommand = new SqlCommand( "select Msg from dbo.tTranTest where Id = @Id" );
             _readMessageCommand.Parameters.Add( "@Id", SqlDbType.Int );
         }
-        void ResetTranTestTable()
+
+        static void ResetTranTestTable()
         {
             using( var con = TestHelper.CreateOpenedConnection() )
             {
@@ -107,13 +148,13 @@ namespace CK.SqlServer.Transaction.Tests
             }
         }
 
-        int AddMessage( ISqlConnectionController c, string msg )
+        static int AddMessage( ISqlConnectionController c, string msg )
         {
             _addMessageCommand.Parameters[0].Value = msg;
             return (int)c.ExecuteScalar( _addMessageCommand );
         }
 
-        string ReadMessage( ISqlConnectionController c, int id )
+        static string ReadMessage( ISqlConnectionController c, int id )
         {
             _readMessageCommand.Parameters[0].Value = id;
             return (string)c.ExecuteScalar( _readMessageCommand );

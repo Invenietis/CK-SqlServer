@@ -70,9 +70,8 @@ namespace CK.SqlServer
 
             interface IInternalTransaction : ISqlTransaction
             {
-                IInternalTransaction OnRollbackAll();
-
                 Nested CreateSub( IsolationLevel isolation );
+
                 void OnSubClose( IInternalTransaction newCurrent, int depth );
             }
 
@@ -105,6 +104,7 @@ namespace CK.SqlServer
                 public void Commit()
                 {
                     if( _status != SqlTransactionStatus.Opened ) throw new InvalidOperationException();
+                    _sub?.OnCommitAbove();
                     _status = SqlTransactionStatus.Committed;
                     _sqlTransaction.Commit();
                     _sqlTransaction.Dispose();
@@ -123,15 +123,16 @@ namespace CK.SqlServer
                 public void RollbackAll()
                 {
                     if( _status != SqlTransactionStatus.Opened ) throw new InvalidOperationException();
-                    IInternalTransaction s = SubTransaction;
-                    while( s != null ) s = s.OnRollbackAll();
+                    if( _sub != null )
+                    {
+                        _sub.OnRollbackAll();
+                        _sub = null;
+                    }
                     _status = SqlTransactionStatus.Rollbacked;
                     _sqlTransaction.Rollback();
                     _sqlTransaction.Dispose();
                     _c.OnMainClosed();
                 }
-
-                IInternalTransaction IInternalTransaction.OnRollbackAll() => null;
 
                 Nested IInternalTransaction.CreateSub( IsolationLevel isolation )
                 {
@@ -144,6 +145,7 @@ namespace CK.SqlServer
                     Debug.Assert( _sub != null );
                     _c._transactionCount = depth;
                     _c._current = newCurrent;
+                    if( newCurrent == this ) _sub = null;
                 }
             }
 
@@ -179,15 +181,23 @@ namespace CK.SqlServer
                 public void Commit()
                 {
                     if( _status != SqlTransactionStatus.Opened ) throw new InvalidOperationException();
-                    if( _sub != null ) _sub.OnCommitAbove();
+                    if( _sub != null )
+                    {
+                        _sub.OnCommitAbove();
+                        _sub = null;
+                    }
                     _status = SqlTransactionStatus.Committed;
                     RestoreSuperIsolationLevel();
-                    _super.OnSubClose( _super, 0 );
+                    _super.OnSubClose( _super, 1 );
                 }
 
-                private void OnCommitAbove()
+                internal void OnCommitAbove()
                 {
-                    if( _sub != null ) _sub.OnCommitAbove();
+                    if( _sub != null )
+                    {
+                        _sub.OnCommitAbove();
+                        _sub = null;
+                    }
                     _status = SqlTransactionStatus.Committed;
                 }
 
@@ -202,10 +212,14 @@ namespace CK.SqlServer
 
                 public void RollbackAll() => _super.RollbackAll();
 
-                IInternalTransaction IInternalTransaction.OnRollbackAll()
+                public void OnRollbackAll()
                 {
+                    if( _sub != null )
+                    {
+                        _sub.OnRollbackAll();
+                        _sub = null;
+                    }
                     _status = SqlTransactionStatus.Rollbacked;
-                    return _super;
                 }
 
                 Nested IInternalTransaction.CreateSub( IsolationLevel isolation )
