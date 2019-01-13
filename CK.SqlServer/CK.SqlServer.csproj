@@ -6,10 +6,10 @@
     </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="10.1.2--0022-develop" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="10.1.2--0075-develop" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="System.Data.SqlClient" Version="4.5.1" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.0" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
