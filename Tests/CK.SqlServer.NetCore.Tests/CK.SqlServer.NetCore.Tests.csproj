@@ -7,10 +7,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.SqlServer\CK.SqlServer.csproj" />
-    <PackageReference Include="CK.Testing.SqlServer" Version="0.0.0--023hmmp-local" />
-    <PackageReference Include="FluentAssertions" Version="5.4.2" />
-    <PackageReference Include="NUnitLite" Version="3.10.1" />
-    <PackageReference Include="NUnit" Version="3.10.1" />
+    <PackageReference Include="CK.Testing.SqlServer" Version="0.0.0--0240hso-local" />
+    <PackageReference Include="FluentAssertions" Version="5.6.0" />
+    <PackageReference Include="NUnitLite" Version="3.11.0" />
+    <PackageReference Include="NUnit" Version="3.11.0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\$(OriginProjectName)\**\*.cs" Exclude="..\$(OriginProjectName)\obj\**">
