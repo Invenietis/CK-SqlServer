@@ -52,8 +52,87 @@ namespace CK.SqlServer.Transaction.Tests
                 var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
                 var messageId = DoCommitTest( controller, 0, 0 );
                 messageId.Should().Be( 1, "One message has been created." );
-                messageId = DoRollbackAndDisposeTest( controller, 0, messageId );
+                messageId = DoRollbackAllAndDisposeTest( controller, 0, messageId );
                 messageId.Should().Be( 3, "Two messages have been created and cancelled." );
+            }
+        }
+
+        [Test]
+        public void basic_nested_transaction_test()
+        {
+            ResetTranTestTable();
+            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
+            {
+                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                DoCommitTest( controller, 0, 0 ).Should().Be( 1, "messageId from 0 to 1." );
+                using( var tran = controller.BeginTransaction() )
+                {
+                    DoCommitTest( controller, 1, 1 ).Should().Be( 2, "messageId from 1 to 2." );
+                    DoCommitTest( controller, 1, 2 ).Should().Be( 3, "messageId from 2 to 3." );
+                    using( var tran2 = controller.BeginTransaction() )
+                    {
+                        DoCommitTest( controller, 2, 3 ).Should().Be( 4, "messageId from 3 to 4." );
+                        DoRollbackAllAndDisposeTest( controller, 2, 4 ).Should().Be( 6, "messageId from 4 to 6." );
+                        controller.TransactionCount.Should().Be( 0 );
+                        tran2.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                    }
+                    tran.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                }
+            }
+        }
+
+        [Test]
+        public void nested_transaction_with_levels()
+        {
+            ResetTranTestTable();
+            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
+            {
+                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                controller.Connection.State.Should().Be( ConnectionState.Closed );
+                controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Unspecified );
+                using( var tran0 = controller.BeginTransaction() )
+                {
+                    controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.ReadCommitted );
+                    DoCommitTest( controller, tranCount: 1, messageId: 0 ).Should().Be( 1, "messageId from 0 to 1." );
+                    using( var tran1 = controller.BeginTransaction( IsolationLevel.Serializable ) )
+                    {
+                        controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Serializable );
+                        DoCommitTest( controller, tranCount: 2, messageId: 1 ).Should().Be( 2, "messageId from 1 to 2." );
+                        controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Serializable );
+
+                        using( var tran2 = controller.BeginTransaction( IsolationLevel.ReadUncommitted ) )
+                        {
+                            DoCommitTest( controller, tranCount: 3, messageId: 2 ).Should().Be( 3, "messageId from 2 to 3." );
+                            controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.ReadUncommitted );
+                            DoRollbackAllAndDisposeTest( controller, tranCount: 3, messageId: 3 ).Should().Be( 5, "messageId from 3 to 5." );
+                            controller.TransactionCount.Should().Be( 0 );
+                            tran2.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                        }
+                        tran1.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                    }
+                    tran0.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                }
+            }
+        }
+
+        [Test]
+        public void default_isolation_level_ReadCommitted_is_restored()
+        {
+            ResetTranTestTable();
+            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
+            {
+                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                controller.Connection.State.Should().Be( ConnectionState.Closed );
+                controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Unspecified );
+                controller.ExplicitOpen();
+                controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.ReadCommitted );
+                using( var tran = controller.BeginTransaction( IsolationLevel.Serializable ) )
+                {
+                    controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Serializable );
+                }
+                controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.ReadCommitted );
+                controller.ExplicitClose();
+                controller.GetCurrentIsolationLevel().Should().Be( IsolationLevel.Unspecified );
             }
         }
 
@@ -74,7 +153,7 @@ namespace CK.SqlServer.Transaction.Tests
             return messageId;
         }
 
-        static int DoRollbackAndDisposeTest( ISqlConnectionTransactionController controller, int tranCount, int messageId )
+        static int DoRollbackAllAndDisposeTest( ISqlConnectionTransactionController controller, int tranCount, int messageId )
         {
             var message = Guid.NewGuid().ToString();
             using( var tran = controller.BeginTransaction() )
@@ -101,29 +180,7 @@ namespace CK.SqlServer.Transaction.Tests
             return messageId;
         }
 
-        [Test]
-        public void basic_nested_transaction_test()
-        {
-            ResetTranTestTable();
-            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
-            {
-                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
-                DoCommitTest( controller, 0, 0 ).Should().Be( 1, "messageId from 0 to 1." );
-                using( var tran = controller.BeginTransaction() )
-                {
-                    DoCommitTest( controller, 1, 1 ).Should().Be( 2, "messageId from 1 to 2." );
-                    DoCommitTest( controller, 1, 2 ).Should().Be( 3, "messageId from 2 to 3." );
-                    using( var tran2 = controller.BeginTransaction() )
-                    {
-                        DoCommitTest( controller, 2, 3 ).Should().Be( 4, "messageId from 3 to 4." );
-                        DoRollbackAndDisposeTest( controller, 2, 4 ).Should().Be( 6, "messageId from 4 to 6." );
-                        controller.TransactionCount.Should().Be( 0 );
-                        tran2.Status.Should().Be( SqlTransactionStatus.Rollbacked );
-                    }
-                    tran.Status.Should().Be( SqlTransactionStatus.Rollbacked );
-                }
-            }
-        }
+
 
         static readonly SqlCommand _resetCommand;
         static readonly SqlCommand _addMessageCommand;

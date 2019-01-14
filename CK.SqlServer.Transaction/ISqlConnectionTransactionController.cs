@@ -26,12 +26,9 @@ namespace CK.SqlServer
         int TransactionCount { get; }
 
         /// <summary>
-        /// Gets the current <see cref="IsolationLevel"/>.
-        /// When no transactions are active, this is <see cref="IsolationLevel.Unspecified"/>.
-        /// This can be changed by calls to <see cref="BeginTransaction(IsolationLevel)"/>.
-        /// Please read this before playing with isolation level: https://docs.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql?view=sql-server-2017#remarks
+        /// Gets the <see cref="SqlTransaction"/> if one has been started, null otherwise. 
         /// </summary>
-        IsolationLevel CurrentIsolationLevel { get; }
+        SqlTransaction Transaction { get; }
 
         /// <summary>
         /// Starts a transaction.

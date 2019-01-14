@@ -160,14 +160,18 @@ namespace CK.SqlServer
                     _super = super;
                     if( (IsolationLevel = isolationLevel) != super.IsolationLevel )
                     {
+                        if( !SetTransactionLevel( _super.ConnectionController, isolationLevel ) )
+                        {
+                            throw new InvalidOperationException( $"Unable to set isolation level: {super.IsolationLevel} => {isolationLevel}." );
+                        }
                     }
                 }
 
-                void RestoreSuperIsolationLevel()
+                bool RestoreSuperIsolationLevel()
                 {
-                    if( IsolationLevel != _super.IsolationLevel )
-                    {
-                    }
+                    return IsolationLevel != _super.IsolationLevel
+                            ? SetTransactionLevel( _super.ConnectionController, _super.IsolationLevel )
+                            : true;
                 }
 
                 public ISqlConnectionTransactionController ConnectionController => _super.ConnectionController;
@@ -181,14 +185,21 @@ namespace CK.SqlServer
                 public void Commit()
                 {
                     if( _status != SqlTransactionStatus.Opened ) throw new InvalidOperationException();
-                    if( _sub != null )
+                    if( !RestoreSuperIsolationLevel() )
                     {
-                        _sub.OnCommitAbove();
-                        _sub = null;
+                        RollbackAll();
                     }
-                    _status = SqlTransactionStatus.Committed;
-                    RestoreSuperIsolationLevel();
-                    _super.OnSubClose( _super, 1 );
+                    else
+                    {
+                        if( _sub != null )
+                        {
+                            _sub.OnCommitAbove();
+                            _sub = null;
+                        }
+                        _status = SqlTransactionStatus.Committed;
+                        RestoreSuperIsolationLevel();
+                        _super.OnSubClose( _super, 1 );
+                    }
                 }
 
                 internal void OnCommitAbove()
@@ -251,7 +262,7 @@ namespace CK.SqlServer
 
             ISqlTransactionCallContext ISqlConnectionTransactionController.SqlCallContext => (ISqlTransactionCallContext)base.SqlCallContext;
 
-            public SqlTransaction SqlTransaction => _main?.SqlTransaction;
+            public SqlTransaction Transaction => _main?.SqlTransaction;
 
             public void Commit()
             {
@@ -267,6 +278,11 @@ namespace CK.SqlServer
 
             void OnMainClosed()
             {
+                Debug.Assert( _main != null );
+                if( _main.IsolationLevel != IsolationLevel.ReadCommitted )
+                {
+                    SetTransactionLevel( this, IsolationLevel.ReadCommitted );
+                }
                 _main = null;
                 _transactionCount = 0;
                 ImplicitClose();
@@ -288,6 +304,25 @@ namespace CK.SqlServer
             }
         }
 
+        static bool SetTransactionLevel( ISqlConnectionTransactionController controller, IsolationLevel isolationLevel )
+        {
+            using( var cmd = new SqlCommand( $"SET TRANSACTION ISOLATION LEVEL {isolationLevel.ToSqlString()};" ) )
+            {
+                cmd.Transaction = controller.Transaction;
+                cmd.Connection = controller.Connection;
+                try
+                {
+                    cmd.ExecuteNonQuery();
+                    return true;
+                }
+                catch( Exception ex )
+                {
+                    controller.SqlCallContext.Monitor.Error( $"Failed to set isolation level {isolationLevel}.", ex );
+                    return false;
+                }
+            }
+        }
+
         protected override Controller CreateController( string connectionString )
         {
             return new TransactionController( this, connectionString );
@@ -296,7 +331,7 @@ namespace CK.SqlServer
         protected override void OnCommandExecuting( SqlCommand cmd, int retryNumber )
         {
             var c = (TransactionController)FindController( cmd.Connection );
-            if( c != null ) cmd.Transaction = c.SqlTransaction;
+            if( c != null ) cmd.Transaction = c.Transaction;
             base.OnCommandExecuting( cmd, retryNumber );
         }
 

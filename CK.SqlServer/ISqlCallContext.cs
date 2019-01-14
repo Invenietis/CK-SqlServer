@@ -59,6 +59,13 @@ namespace CK.SqlServer
         /// <returns>The connection controller to use.</returns>
         ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider );
 
+        /// <summary>
+        /// Finds a controller by its connection. This is required because the <see cref="SqlConnection.ConnectionString"/>
+        /// may be different than the initialized one (security information may be removed).
+        /// </summary>
+        /// <param name="connection">The connection instance.</param>
+        /// <returns>Null or the controller associated to the connection instance.</returns>
+        ISqlConnectionController FindController( SqlConnection connection );
 
     }
 }
