@@ -43,5 +43,29 @@ namespace CK.SqlServer
         /// <returns>The connection controller to use.</returns>
         ISqlConnectionController this[ISqlConnectionStringProvider provider] { get; }
 
+        /// <summary>
+        /// Gets the connection controller to use for a given connection string.
+        /// This is simply a more explicit call to the actual indexer: <see cref="ISqlCallContext.this[string]"/>.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <returns>The connection controller to use.</returns>
+        ISqlConnectionController GetConnectionController( string connectionString );
+
+        /// <summary>
+        /// Gets the connection controller to use for a given connection string provider.
+        /// This is simply a more explicit call to the actual indexer: <see cref="ISqlCallContext.this[ISqlConnectionStringProvider]"/>.
+        /// </summary>
+        /// <param name="provider">The connection string provider.</param>
+        /// <returns>The connection controller to use.</returns>
+        ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider );
+
+        /// <summary>
+        /// Finds a controller by its connection. This is required because the <see cref="SqlConnection.ConnectionString"/>
+        /// may be different than the initialized one (security information may be removed).
+        /// </summary>
+        /// <param name="connection">The connection instance.</param>
+        /// <returns>Null or the controller associated to the connection instance.</returns>
+        ISqlConnectionController FindController( SqlConnection connection );
+
     }
 }

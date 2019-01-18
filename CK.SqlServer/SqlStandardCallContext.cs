@@ -74,11 +74,11 @@ namespace CK.SqlServer
             if( _cache != null )
             {
                 Controller c = _cache as Controller;
-                if( c != null ) c.Dispose();
+                if( c != null ) c.DisposeConnection();
                 else
                 {
                     Controller[] cache = _cache as Controller[];
-                    for( int i = 0; i < cache.Length; ++i ) cache[i].Dispose();
+                    for( int i = 0; i < cache.Length; ++i ) cache[i].DisposeConnection();
                 }
                 _cache = null;
                 if( _monitor != null && _ownedMonitor )
@@ -89,12 +89,16 @@ namespace CK.SqlServer
             }
         }
 
-        class Controller : ISqlConnectionController
+        /// <summary>
+        /// Implements <see cref="ISqlConnectionController"/>. 
+        /// </summary>
+        protected class Controller : ISqlConnectionController
         {
             readonly SqlStandardCallContext _ctx;
             internal readonly string ConnectionString;
             readonly SqlConnection _connection;
-            int _openCount;
+            int _explicitOpenCount;
+            int _implicitOpenCount;
 
             public Controller( SqlStandardCallContext ctx, string connectionString )
             {
@@ -105,15 +109,15 @@ namespace CK.SqlServer
 
             public SqlConnection Connection => _connection;
 
-            public int ExplicitOpenCount => _openCount;
-
             public ISqlCallContext SqlCallContext => _ctx;
+
+            public int ExplicitOpenCount => _explicitOpenCount;
 
             public void ExplicitClose()
             {
-                if( _openCount > 0 )
+                if( _explicitOpenCount > 0 )
                 {
-                    if( --_openCount == 0 )
+                    if( --_explicitOpenCount == 0 && _implicitOpenCount == 0 )
                     {
                         _connection.Close();
                     }
@@ -122,7 +126,7 @@ namespace CK.SqlServer
 
             public void ExplicitOpen()
             {
-                if( ++_openCount == 1 )
+                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
                 {
                     _connection.Open();
                 }
@@ -130,25 +134,62 @@ namespace CK.SqlServer
 
             public Task ExplicitOpenAsync()
             {
-                if( ++_openCount == 1 )
+                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
                 {
                     return _connection.OpenAsync();
                 }
                 return Task.CompletedTask;
             }
 
-            public void Dispose()
+            protected int ImplicitOpenCount => _implicitOpenCount;
+
+            protected void ImplicitClose()
+            {
+                if( _implicitOpenCount > 0 )
+                {
+                    if( --_implicitOpenCount == 0 && _explicitOpenCount == 0 )
+                    {
+                        _connection.Close();
+                    }
+                }
+            }
+
+            protected void ImplicitOpen()
+            {
+                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
+                {
+                    _connection.Open();
+                }
+            }
+
+            protected Task ImplicitOpenAsync()
+            {
+                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
+                {
+                    return _connection.OpenAsync();
+                }
+                return Task.CompletedTask;
+            }
+
+            internal void DisposeConnection()
             {
                 _connection.Dispose();
             }
         }
 
-        Controller GetProvider( string connectionString )
+        /// <summary>
+        /// Gets the <see cref="Controller"/> object for the given connection.
+        /// This method manages the cache and calls the factory method <see cref="CreateController(string)"/>
+        /// as needed.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <returns>The typed controller.</returns>
+        protected Controller GetController( string connectionString )
         {
             Controller c;
             if( _cache == null )
             {
-                c = new Controller( this, connectionString );
+                c = CreateController( connectionString );
                 _cache = c;
                 return c;
             }
@@ -157,24 +198,51 @@ namespace CK.SqlServer
             if( c != null )
             {
                 if( c.ConnectionString == connectionString ) return c;
-                newC = new Controller( this, connectionString );
+                newC = CreateController( connectionString );
                 _cache = new Controller[] { c, newC };
             }
             else
             {
-                Controller[] cache = (Controller[])_cache;
+                var cache = (Controller[])_cache;
                 for( int i = 0; i < cache.Length; i++ )
                 {
                     c = cache[i];
                     if( c.ConnectionString == connectionString ) return c;
                 }
-                Controller[] newCache = new Controller[cache.Length + 1];
+                var newCache = new Controller[cache.Length + 1];
                 Array.Copy( cache, newCache, cache.Length );
-                newC = new Controller( this, connectionString );
+                newC = CreateController( connectionString );
                 newCache[cache.Length] = newC;
                 _cache = newCache;
             }
             return newC;
+        }
+
+        /// <summary>
+        /// Finds a controller by its connection. This is required because the <see cref="SqlConnection.ConnectionString"/>
+        /// may be different than the initialized one (security information may be removed).
+        /// </summary>
+        /// <param name="connection">The connection instance.</param>
+        /// <returns>Null or the controller associated to the connection instance.</returns>
+        public ISqlConnectionController FindController( SqlConnection connection )
+        {
+            if( _cache is Controller controller ) return controller.Connection == connection ? controller : null;
+            var cache = (Controller[])_cache;
+            foreach( var c in cache )
+            {
+                if( c.Connection == connection ) return c;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="Controller"/> object.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <returns>The new controller.</returns>
+        protected virtual Controller CreateController( string connectionString )
+        {
+            return new Controller( this, connectionString );
         }
 
         /// <summary>
@@ -183,7 +251,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
         /// <returns>The connection controller to use.</returns>
-        public ISqlConnectionController this[string connectionString] => GetProvider( connectionString );
+        public ISqlConnectionController this[string connectionString] => GetController( connectionString );
 
         /// <summary>
         /// Gets the connection controller to use for a given connection string provider.
@@ -191,7 +259,23 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="provider">The connection string provider.</param>
         /// <returns>The connection controller to use.</returns>
-        public ISqlConnectionController this[ISqlConnectionStringProvider provider] => GetProvider( provider.ConnectionString );
+        public ISqlConnectionController this[ISqlConnectionStringProvider provider] => GetController( provider.ConnectionString );
+
+        /// <summary>
+        /// Gets the connection controller to use for a given connection string.
+        /// This is simply a more explicit call to the actual indexer: <see cref="ISqlCallContext.this[string]"/>.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <returns>The connection controller to use.</returns>
+        public ISqlConnectionController GetConnectionController( string connectionString ) => GetController( connectionString );
+
+        /// <summary>
+        /// Gets the connection controller to use for a given connection string provider.
+        /// This is simply a more explicit call to the actual indexer: <see cref="ISqlCallContext.this[ISqlConnectionStringProvider]"/>.
+        /// </summary>
+        /// <param name="provider">The connection string provider.</param>
+        /// <returns>The connection controller to use.</returns>
+        public ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider ) => GetController( provider.ConnectionString );
 
         T ISqlCommandExecutor.ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
         {
