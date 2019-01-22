@@ -26,6 +26,11 @@ namespace CK.SqlServer
         SqlConnection Connection { get; }
 
         /// <summary>
+        /// Gets the <see cref="SqlTransaction"/> if one has been started, null otherwise. 
+        /// </summary>
+        SqlTransaction Transaction { get; }
+
+        /// <summary>
         /// Opens the connection to the database if it were closed (only increments <see cref="ExplicitOpenCount"/> if the 
         /// <see cref="Connection"/> were already opened). The connection will remain opened
         /// until a corresponding explicit call to <see cref="ExplicitClose"/> is made.

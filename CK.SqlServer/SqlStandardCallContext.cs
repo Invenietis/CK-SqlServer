@@ -109,6 +109,8 @@ namespace CK.SqlServer
 
             public SqlConnection Connection => _connection;
 
+            public virtual SqlTransaction Transaction => null;
+
             public ISqlCallContext SqlCallContext => _ctx;
 
             public int ExplicitOpenCount => _explicitOpenCount;
