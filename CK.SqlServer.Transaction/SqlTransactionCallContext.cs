@@ -262,7 +262,7 @@ namespace CK.SqlServer
 
             ISqlTransactionCallContext ISqlConnectionTransactionController.SqlCallContext => (ISqlTransactionCallContext)base.SqlCallContext;
 
-            public SqlTransaction Transaction => _main?.SqlTransaction;
+            public override SqlTransaction Transaction => _main?.SqlTransaction;
 
             public void Commit()
             {
