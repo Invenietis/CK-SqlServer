@@ -328,12 +328,5 @@ namespace CK.SqlServer
             return new TransactionController( this, connectionString );
         }
 
-        protected override void OnCommandExecuting( SqlCommand cmd, int retryNumber )
-        {
-            var c = (TransactionController)FindController( cmd.Connection );
-            if( c != null ) cmd.Transaction = c.Transaction;
-            base.OnCommandExecuting( cmd, retryNumber );
-        }
-
     }
 }

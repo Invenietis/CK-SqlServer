@@ -25,7 +25,10 @@ namespace CK.SqlServer
         public static T ExecuteQuery<T>( this ISqlConnectionController @this, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, innerExecutor );
+            using( @this.ExplicitOpen() )
+            {
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, innerExecutor, @this.Transaction );
+            }
         }
 
         /// <summary>
@@ -38,10 +41,13 @@ namespace CK.SqlServer
         /// <param name="innerExecutor">The actual executor (asynchronous).</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>The result of the call built by <paramref name="innerExecutor"/>.</returns>
-        public static Task<T> ExecuteQueryAsync<T>( this ISqlConnectionController @this, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken = default( CancellationToken ) )
+        public static async Task<T> ExecuteQueryAsync<T>( this ISqlConnectionController @this, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken = default( CancellationToken ) )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, innerExecutor, cancellationToken );
+            using( await @this.ExplicitOpenAsync() )
+            {
+                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, innerExecutor, @this.Transaction, cancellationToken );
+            }
         }
 
         /// <summary>
@@ -53,7 +59,10 @@ namespace CK.SqlServer
         public static int ExecuteNonQuery( this ISqlConnectionController @this, SqlCommand cmd )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteNonQuery() );
+            using( @this.ExplicitOpen() )
+            {
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteNonQuery(), @this.Transaction );
+            }
         }
 
         /// <summary>
@@ -68,9 +77,12 @@ namespace CK.SqlServer
         public static object ExecuteScalar( this ISqlConnectionController @this, SqlCommand cmd )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteScalar() );
+            using( @this.ExplicitOpen() )
+            {
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteScalar(), @this.Transaction );
+            }
         }
-        
+
         /// <summary>
         /// Executes a command asynchrously.
         /// Can be interrupted thanks to a <see cref="CancellationToken"/>.
@@ -79,10 +91,13 @@ namespace CK.SqlServer
         /// <param name="cmd">The command to execute.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>The return of the <see cref="SqlCommand.ExecuteNonQuery"/> (number of rows affected).</returns>
-        public static Task<int> ExecuteNonQueryAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default( CancellationToken ) )
+        public static async Task<int> ExecuteNonQueryAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default( CancellationToken ) )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, (c,t) => c.ExecuteNonQueryAsync( t ), cancellationToken );
+            using( await @this.ExplicitOpenAsync() )
+            {
+                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ( c, t ) => c.ExecuteNonQueryAsync( t ), @this.Transaction, cancellationToken );
+            }
         }
 
         /// <summary>
@@ -95,10 +110,13 @@ namespace CK.SqlServer
         /// <param name="cmd">The command to execute.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>The read value (can be <see cref="DBNull.Value"/>) or null if no rows are returned.</returns>
-        public static Task<object> ExecuteScalarAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default( CancellationToken ) )
+        public static async Task<object> ExecuteScalarAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default( CancellationToken ) )
         {
             var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ( c, t ) => c.ExecuteScalarAsync( t ), cancellationToken );
+            using( await @this.ExplicitOpenAsync() )
+            {
+                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ( c, t ) => c.ExecuteScalarAsync( t ), @this.Transaction, cancellationToken );
+            }
         }
 
         /// <summary>
@@ -121,18 +139,21 @@ namespace CK.SqlServer
                             : builder( null );
                 }
             }
-            var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, ReadRow );
+            return ExecuteQuery( @this, cmd, ReadRow );
         }
 
         /// <summary>
         /// Executes a one-row query (uses <see cref="CommandBehavior.SingleRow"/>) and builds an object based on
         /// the row data.
+        /// <para>
+        /// Important: When there is no result, the <paramref name="builder"/> function is called with a null SqlDataRow
+        /// so that void result can also be handled.
+        /// </para>
         /// </summary>
         /// <typeparam name="T">The result object type.</typeparam>
         /// <param name="this">This connection controller.</param>
         /// <param name="cmd">The command to execute.</param>
-        /// <param name="builder">The function that builds an object: called with a null <see cref="SqlDataRow"/> when there is no result.</param>
+        /// <param name="builder">The function that builds an object (called with a null <see cref="SqlDataRow"/> when there is no result).</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>The built object.</returns>
         public static Task<T> ExecuteSingleRowAsync<T>( this ISqlConnectionController @this, SqlCommand cmd, Func<SqlDataRow, T> builder, CancellationToken cancellationToken = default(CancellationToken) )
@@ -146,8 +167,7 @@ namespace CK.SqlServer
                             : builder( null );
                 }
             }
-            var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ReadRowAsync, cancellationToken );
+            return ExecuteQueryAsync( @this, cmd, ReadRowAsync, cancellationToken );
         }
 
         /// <summary>
@@ -173,8 +193,7 @@ namespace CK.SqlServer
                 }
                 return collector;
             }
-            var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, ReadRows );
+            return ExecuteQuery( @this, cmd, ReadRows );
         }
 
         /// <summary>
@@ -201,8 +220,7 @@ namespace CK.SqlServer
                 }
                 return collector;
             }
-            var ctx = @this.SqlCallContext;
-            return ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ReadRowsAsync, cancellationToken );
+            return ExecuteQueryAsync( @this, cmd, ReadRowsAsync, cancellationToken );
         }
     }
 }

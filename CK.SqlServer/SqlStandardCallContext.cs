@@ -99,12 +99,25 @@ namespace CK.SqlServer
             readonly SqlConnection _connection;
             int _explicitOpenCount;
             int _implicitOpenCount;
+            bool _allowStateChange;
 
             public Controller( SqlStandardCallContext ctx, string connectionString )
             {
                 _ctx = ctx;
                 ConnectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
+                _connection.StateChange += OnConnectionStateChange;
+            }
+
+            void OnConnectionStateChange( object sender, System.Data.StateChangeEventArgs e )
+            {
+                if( !_allowStateChange
+                    && e.CurrentState != e.OriginalState
+                    && (e.CurrentState == System.Data.ConnectionState.Closed
+                        || e.CurrentState == System.Data.ConnectionState.Open) )
+                {
+                    throw new InvalidOperationException( "SqlConnection MUST be opened or closed only by its ISqlConnectionController." );
+                }
             }
 
             public SqlConnection Connection => _connection;
@@ -113,35 +126,90 @@ namespace CK.SqlServer
 
             public ISqlCallContext SqlCallContext => _ctx;
 
-            public int ExplicitOpenCount => _explicitOpenCount;
+            public bool IsExplicitlyOpened => _explicitOpenCount != 0;
 
-            public void ExplicitClose()
+            void DoOpen()
+            {
+                _allowStateChange = true;
+                try
+                {
+                    _connection.Open();
+                }
+                finally
+                {
+                    _allowStateChange = false;
+                }
+            }
+
+            Task DoOpenAsync()
+            {
+                _allowStateChange = true;
+                return _connection.OpenAsync().ContinueWith( _ => _allowStateChange = false );
+            }
+
+            void DoClose()
+            {
+                _allowStateChange = true;
+                try
+                {
+                    _connection.Close();
+                }
+                finally
+                {
+                    _allowStateChange = false;
+                }
+            }
+
+            internal void ExplicitClose()
             {
                 if( _explicitOpenCount > 0 )
                 {
                     if( --_explicitOpenCount == 0 && _implicitOpenCount == 0 )
                     {
-                        _connection.Close();
+                        DoClose();
                     }
                 }
             }
 
-            public void ExplicitOpen()
+            sealed class AutoCloser : IDisposable
             {
-                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
+                Controller _c;
+
+                public AutoCloser( Controller c )
                 {
-                    _connection.Open();
+                    _c = c;
+                }
+
+                public void Dispose()
+                {
+                    if( _c != null )
+                    {
+                        _c.ExplicitClose();
+                        _c = null;
+                    }
                 }
             }
 
-            public Task ExplicitOpenAsync()
+
+            public IDisposable ExplicitOpen()
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
                 {
-                    return _connection.OpenAsync();
+                    DoOpen();
                 }
-                return Task.CompletedTask;
+                return new AutoCloser( this );
             }
+
+            public async Task<IDisposable> ExplicitOpenAsync()
+            {
+                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
+                {
+                    await DoOpenAsync().ConfigureAwait( false );
+                }
+                return new AutoCloser( this );
+            }
+
+            protected int ExplicitOpenCount => _explicitOpenCount;
 
             protected int ImplicitOpenCount => _implicitOpenCount;
 
@@ -151,7 +219,7 @@ namespace CK.SqlServer
                 {
                     if( --_implicitOpenCount == 0 && _explicitOpenCount == 0 )
                     {
-                        _connection.Close();
+                        DoClose();
                     }
                 }
             }
@@ -160,7 +228,7 @@ namespace CK.SqlServer
             {
                 if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
                 {
-                    _connection.Open();
+                    DoOpen();
                 }
             }
 
@@ -168,13 +236,14 @@ namespace CK.SqlServer
             {
                 if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
                 {
-                    return _connection.OpenAsync();
+                    return DoOpenAsync();
                 }
                 return Task.CompletedTask;
             }
 
             internal void DisposeConnection()
             {
+                _allowStateChange = true;
                 _connection.Dispose();
             }
         }
@@ -279,8 +348,14 @@ namespace CK.SqlServer
         /// <returns>The connection controller to use.</returns>
         public ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider ) => GetController( provider.ConnectionString );
 
-        T ISqlCommandExecutor.ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
+        T ISqlCommandExecutor.ExecuteQuery<T>(
+            IActivityMonitor monitor,
+            SqlConnection connection,
+            SqlCommand cmd,
+            Func<SqlCommand, T> innerExecutor,
+            SqlTransaction transaction )
         {
+            Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
             List<SqlDetailedException> previous = null;
@@ -290,14 +365,12 @@ namespace CK.SqlServer
                 SqlDetailedException e = null;
                 try
                 {
-                    using( connection.EnsureOpen() )
-                    {
-                        cmd.Connection = connection;
-                        OnCommandExecuting( cmd, retryCount );
+                    cmd.Connection = connection;
+                    cmd.Transaction = transaction;
+                    OnCommandExecuting( cmd, retryCount );
 
-                        result = innerExecutor( cmd );
-                        break;
-                    }
+                    result = innerExecutor( cmd );
+                    break;
                 }
                 catch( IOException ex )
                 {
@@ -324,8 +397,15 @@ namespace CK.SqlServer
             return result;
         }
 
-        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken )
+        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>(
+            IActivityMonitor monitor,
+            SqlConnection connection,
+            SqlCommand cmd,
+            Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
+            SqlTransaction transaction,
+            CancellationToken cancellationToken )
         {
+            Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
             List<SqlDetailedException> previous = null;
@@ -335,14 +415,12 @@ namespace CK.SqlServer
                 SqlDetailedException e = null;
                 try
                 {
-                    using( await connection.EnsureOpenAsync( cancellationToken ).ConfigureAwait( false ) )
-                    {
-                        cmd.Connection = connection;
-                        OnCommandExecuting( cmd, retryCount );
+                    cmd.Connection = connection;
+                    cmd.Transaction = transaction;
+                    OnCommandExecuting( cmd, retryCount );
 
-                        result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
-                        break;
-                    }
+                    result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
+                    break;
                 }
                 catch( IOException ex )
                 {

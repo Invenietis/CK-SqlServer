@@ -21,7 +21,8 @@ namespace CK.SqlServer
 
         /// <summary>
         /// Gets the controlled actual connection.
-        /// It can be opened or closed.
+        /// It can be opened or closed but MUST not be opened or closed directly:
+        /// an <see cref="InvalidOperationException"/> will be thrown is such case.
         /// </summary>
         SqlConnection Connection { get; }
 
@@ -31,30 +32,23 @@ namespace CK.SqlServer
         SqlTransaction Transaction { get; }
 
         /// <summary>
-        /// Opens the connection to the database if it were closed (only increments <see cref="ExplicitOpenCount"/> if the 
-        /// <see cref="Connection"/> were already opened). The connection will remain opened
-        /// until a corresponding explicit call to <see cref="ExplicitClose"/> is made.
+        /// Opens the connection to the database if it were closed.
+        /// Returns a IDisposable that will auto close it.
         /// </summary>
-        void ExplicitOpen();
+        /// <returns>A IDisposable that mustbe disposed.</returns>
+        IDisposable ExplicitOpen();
 
         /// <summary>
-        /// Opens the connection to the database if it were closed (only increments <see cref="ExplicitOpenCount"/> if the 
-        /// <see cref="Connection"/> were already opened). The connection will remain opened
-        /// until a corresponding explicit call to <see cref="ExplicitClose"/> is made.
+        /// Opens the connection to the database if it were closed.
+        /// Returns a IDisposable that will auto close it.
         /// </summary>
-        Task ExplicitOpenAsync();
+        /// <returns>A IDisposable that mustbe disposed.</returns>
+        Task<IDisposable> ExplicitOpenAsync();
 
         /// <summary>
-        /// Gets the current number of <see cref="ExplicitOpen"/>.
+        /// Gets whether the connection has been explicitly opened.
         /// </summary>
-        int ExplicitOpenCount { get; }
+        bool IsExplicitlyOpened { get; }
 
-        /// <summary>
-        /// Closes the connection to the database: decrements <see cref="ExplicitOpenCount"/> and closes the 
-        /// connection if it is zero.
-        /// Calling this more times than <see cref="ExplicitOpen"/> is ignored (the <see cref="ExplicitOpenCount"/>
-        /// is never negative).
-        /// </summary>
-        void ExplicitClose();
     }
 }
