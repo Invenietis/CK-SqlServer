@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CK.SqlServer
@@ -21,7 +23,8 @@ namespace CK.SqlServer
 
         /// <summary>
         /// Gets the controlled actual connection.
-        /// It can be opened or closed but MUST not be opened or closed directly:
+        /// It can be opened or closed either by <see cref="ExplicitOpen"/>, <see cref="ExplicitOpenAsync"/>
+        /// or thanks to <see cref="GetDbConnection"/> but MUST not be opened or closed directly:
         /// an <see cref="InvalidOperationException"/> will be thrown is such case.
         /// </summary>
         SqlConnection Connection { get; }
@@ -43,12 +46,18 @@ namespace CK.SqlServer
         /// Returns a IDisposable that will auto close it.
         /// </summary>
         /// <returns>A IDisposable that mustbe disposed.</returns>
-        Task<IDisposable> ExplicitOpenAsync();
+        Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default( CancellationToken ) );
 
         /// <summary>
         /// Gets whether the connection has been explicitly opened.
         /// </summary>
         bool IsExplicitlyOpened { get; }
+
+        /// <summary>
+        /// Extensibility point: returns a <see cref="DbConnection"/> that wraps this <see cref="Connection"/>.
+        /// </summary>
+        /// <returns>A connection wrapper.</returns>
+        DbConnection GetDbConnection();
 
     }
 }

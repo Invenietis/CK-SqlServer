@@ -2,6 +2,7 @@ using CK.Core;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Text;
@@ -64,7 +65,7 @@ namespace CK.SqlServer
         public new ISqlConnectionTransactionController GetConnectionController( ISqlConnectionStringProvider provider ) => (ISqlConnectionTransactionController)GetController( provider.ConnectionString );
 
 
-        class TransactionController : Controller, ISqlConnectionTransactionController
+        class TransactionController : ControlledSqlConnection, ISqlConnectionTransactionController
         {
             int _transactionCount;
 
@@ -288,7 +289,35 @@ namespace CK.SqlServer
                 ImplicitClose();
             }
 
-            public ISqlTransaction BeginTransaction( IsolationLevel isolationLevel )
+            class DBTransactionWrapper : DbTransaction
+            {
+                readonly IInternalTransaction _transaction;
+
+                public DBTransactionWrapper( IInternalTransaction t )
+                {
+                    _transaction = t;
+                }
+
+                public override IsolationLevel IsolationLevel => _transaction.IsolationLevel;
+
+                protected override DbConnection DbConnection => (DbConnection)_transaction.ConnectionController;
+
+                public override void Commit() => _transaction.Commit();
+
+                public override void Rollback() => _transaction.RollbackAll();
+            }
+
+            protected override DbTransaction BeginDbTransaction( IsolationLevel isolationLevel )
+            {
+                return new DBTransactionWrapper( DoBeginTransaction( isolationLevel ) );
+            }
+
+            ISqlTransaction ISqlConnectionTransactionController.BeginTransaction(IsolationLevel isolationLevel)
+            {
+                return DoBeginTransaction( isolationLevel );
+            }
+
+            IInternalTransaction DoBeginTransaction( IsolationLevel isolationLevel )
             {
                 ++_transactionCount;
                 if( _main == null )
@@ -323,7 +352,7 @@ namespace CK.SqlServer
             }
         }
 
-        protected override Controller CreateController( string connectionString )
+        protected override ControlledSqlConnection CreateController( string connectionString )
         {
             return new TransactionController( this, connectionString );
         }

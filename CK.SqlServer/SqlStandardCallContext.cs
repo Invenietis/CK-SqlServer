@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
@@ -73,12 +75,12 @@ namespace CK.SqlServer
         {
             if( _cache != null )
             {
-                Controller c = _cache as Controller;
-                if( c != null ) c.DisposeConnection();
+                ControlledSqlConnection c = _cache as ControlledSqlConnection;
+                if( c != null ) c.Dispose();
                 else
                 {
-                    Controller[] cache = _cache as Controller[];
-                    for( int i = 0; i < cache.Length; ++i ) cache[i].DisposeConnection();
+                    ControlledSqlConnection[] cache = _cache as ControlledSqlConnection[];
+                    for( int i = 0; i < cache.Length; ++i ) cache[i].Dispose();
                 }
                 _cache = null;
                 if( _monitor != null && _ownedMonitor )
@@ -89,22 +91,19 @@ namespace CK.SqlServer
             }
         }
 
-        /// <summary>
-        /// Implements <see cref="ISqlConnectionController"/>. 
-        /// </summary>
-        protected class Controller : ISqlConnectionController
+        protected class ControlledSqlConnection : DbConnection, ISqlConnectionController
         {
-            readonly SqlStandardCallContext _ctx;
-            internal readonly string ConnectionString;
             readonly SqlConnection _connection;
+            readonly string _connectionString;
+            readonly SqlStandardCallContext _ctx;
             int _explicitOpenCount;
             int _implicitOpenCount;
             bool _allowStateChange;
 
-            public Controller( SqlStandardCallContext ctx, string connectionString )
+            public ControlledSqlConnection( SqlStandardCallContext ctx, string connectionString )
             {
                 _ctx = ctx;
-                ConnectionString = connectionString;
+                _connectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
                 _connection.StateChange += OnConnectionStateChange;
             }
@@ -120,7 +119,56 @@ namespace CK.SqlServer
                 }
             }
 
+            public override string ConnectionString
+            {
+                get => _connectionString;
+                set => throw new InvalidOperationException( $"ConnectionString of a {nameof(ControlledSqlConnection)} cannot be changed." );
+            }
+
+            public override string Database => _connection.Database;
+
+            public override string DataSource => _connection.DataSource;
+
+            public override string ServerVersion => _connection.ServerVersion;
+
+            public override ConnectionState State => _connection.State;
+
+            public override void ChangeDatabase( string databaseName )
+            {
+                _connection.ChangeDatabase( databaseName );
+            }
+
+            public override void Open()
+            {
+                ImplicitOpen();
+            }
+
+            public override Task OpenAsync( CancellationToken cancellationToken )
+            {
+                return ImplicitOpenAsync( cancellationToken );
+            }
+
+
+            public override void Close()
+            {
+                ImplicitClose();
+            }
+
             public SqlConnection Connection => _connection;
+
+            public DbConnection GetDbConnection() => this;
+
+            protected override DbTransaction BeginDbTransaction( IsolationLevel isolationLevel )
+            {
+                throw new NotSupportedException( "Transaction support is disabled at this level. Use either an autonomous connection (based on the ConnectionString) or use a CK.SqlServer.Transaction.SqlTransactionCallContext if transactions are required." );
+            }
+
+            protected override DbCommand CreateDbCommand() 
+            {
+                var cmd = _connection.CreateCommand();
+                cmd.Transaction = Transaction;
+                return cmd;
+            }
 
             public virtual SqlTransaction Transaction => null;
 
@@ -141,10 +189,10 @@ namespace CK.SqlServer
                 }
             }
 
-            Task DoOpenAsync()
+            Task DoOpenAsync( CancellationToken cancellationToken )
             {
                 _allowStateChange = true;
-                return _connection.OpenAsync().ContinueWith( _ => _allowStateChange = false );
+                return _connection.OpenAsync( cancellationToken ).ContinueWith( _ => _allowStateChange = false );
             }
 
             void DoClose()
@@ -173,9 +221,9 @@ namespace CK.SqlServer
 
             sealed class AutoCloser : IDisposable
             {
-                Controller _c;
+                ControlledSqlConnection _c;
 
-                public AutoCloser( Controller c )
+                public AutoCloser( ControlledSqlConnection c )
                 {
                     _c = c;
                 }
@@ -190,7 +238,6 @@ namespace CK.SqlServer
                 }
             }
 
-
             public IDisposable ExplicitOpen()
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
@@ -200,11 +247,11 @@ namespace CK.SqlServer
                 return new AutoCloser( this );
             }
 
-            public async Task<IDisposable> ExplicitOpenAsync()
+            public async Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default(CancellationToken) )
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
                 {
-                    await DoOpenAsync().ConfigureAwait( false );
+                    await DoOpenAsync( cancellationToken ).ConfigureAwait( false );
                 }
                 return new AutoCloser( this );
             }
@@ -232,20 +279,37 @@ namespace CK.SqlServer
                 }
             }
 
-            protected Task ImplicitOpenAsync()
+            protected Task ImplicitOpenAsync( CancellationToken cancellationToken )
             {
                 if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
                 {
-                    return DoOpenAsync();
+                    return DoOpenAsync( cancellationToken );
                 }
                 return Task.CompletedTask;
             }
 
-            internal void DisposeConnection()
+            protected override DbProviderFactory DbProviderFactory => SqlClientFactory.Instance;
+
+            protected override void Dispose( bool disposing )
             {
-                _allowStateChange = true;
-                _connection.Dispose();
+                if( disposing )
+                {
+                    _allowStateChange = true;
+                    _connection.Dispose();
+                }
+                base.Dispose( disposing );
             }
+
+#if !NET461
+            public override void EnlistTransaction( System.Transactions.Transaction transaction ) => _connection.EnlistTransaction( transaction );
+#endif
+
+            public override DataTable GetSchema() => _connection.GetSchema();
+
+            public override DataTable GetSchema( string collectionName ) => _connection.GetSchema( collectionName );
+
+            public override DataTable GetSchema( string collectionName, string[] restrictionValues ) => _connection.GetSchema( collectionName, restrictionValues );
+
         }
 
         /// <summary>
@@ -255,32 +319,32 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
         /// <returns>The typed controller.</returns>
-        protected Controller GetController( string connectionString )
+        protected ControlledSqlConnection GetController( string connectionString )
         {
-            Controller c;
+            ControlledSqlConnection c;
             if( _cache == null )
             {
                 c = CreateController( connectionString );
                 _cache = c;
                 return c;
             }
-            Controller newC;
-            c = _cache as Controller;
+            ControlledSqlConnection newC;
+            c = _cache as ControlledSqlConnection;
             if( c != null )
             {
                 if( c.ConnectionString == connectionString ) return c;
                 newC = CreateController( connectionString );
-                _cache = new Controller[] { c, newC };
+                _cache = new ControlledSqlConnection[] { c, newC };
             }
             else
             {
-                var cache = (Controller[])_cache;
+                var cache = (ControlledSqlConnection[])_cache;
                 for( int i = 0; i < cache.Length; i++ )
                 {
                     c = cache[i];
                     if( c.ConnectionString == connectionString ) return c;
                 }
-                var newCache = new Controller[cache.Length + 1];
+                var newCache = new ControlledSqlConnection[cache.Length + 1];
                 Array.Copy( cache, newCache, cache.Length );
                 newC = CreateController( connectionString );
                 newCache[cache.Length] = newC;
@@ -297,8 +361,8 @@ namespace CK.SqlServer
         /// <returns>Null or the controller associated to the connection instance.</returns>
         public ISqlConnectionController FindController( SqlConnection connection )
         {
-            if( _cache is Controller controller ) return controller.Connection == connection ? controller : null;
-            var cache = (Controller[])_cache;
+            if( _cache is ControlledSqlConnection controller ) return controller.Connection == connection ? controller : null;
+            var cache = (ControlledSqlConnection[])_cache;
             foreach( var c in cache )
             {
                 if( c.Connection == connection ) return c;
@@ -311,9 +375,9 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
         /// <returns>The new controller.</returns>
-        protected virtual Controller CreateController( string connectionString )
+        protected virtual ControlledSqlConnection CreateController( string connectionString )
         {
-            return new Controller( this, connectionString );
+            return new ControlledSqlConnection( this, connectionString );
         }
 
         /// <summary>
