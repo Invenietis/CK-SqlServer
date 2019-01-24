@@ -15,6 +15,18 @@ namespace CK.SqlServer.Transaction.Tests
     public class BasicTransactionTests
     {
         [Test]
+        public void opening_twice_a_connection_is_an_error_but_it_can_be_closed_multiple_times()
+        {
+            using( var c = new SqlConnection( TestHelper.GetConnectionString() ) )
+            {
+                c.Invoking( _ => _.Open() ).Should().NotThrow();
+                c.Invoking( _ => _.Open() ).Should().Throw<InvalidOperationException>();
+                c.Invoking( _ => _.Close() ).Should().NotThrow();
+                c.Invoking( _ => _.Close() ).Should().NotThrow();
+            }
+        }
+
+        [Test]
         public void begin_transaction_on_closed_connection_is_an_invalid_operation()
         {
             using( var c = new SqlConnection( TestHelper.GetConnectionString() ) )

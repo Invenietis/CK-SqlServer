@@ -289,29 +289,6 @@ namespace CK.SqlServer
                 ImplicitClose();
             }
 
-            class DBTransactionWrapper : DbTransaction
-            {
-                readonly IInternalTransaction _transaction;
-
-                public DBTransactionWrapper( IInternalTransaction t )
-                {
-                    _transaction = t;
-                }
-
-                public override IsolationLevel IsolationLevel => _transaction.IsolationLevel;
-
-                protected override DbConnection DbConnection => (DbConnection)_transaction.ConnectionController;
-
-                public override void Commit() => _transaction.Commit();
-
-                public override void Rollback() => _transaction.RollbackAll();
-            }
-
-            protected override DbTransaction BeginDbTransaction( IsolationLevel isolationLevel )
-            {
-                return new DBTransactionWrapper( DoBeginTransaction( isolationLevel ) );
-            }
-
             ISqlTransaction ISqlConnectionTransactionController.BeginTransaction(IsolationLevel isolationLevel)
             {
                 return DoBeginTransaction( isolationLevel );

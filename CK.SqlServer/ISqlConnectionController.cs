@@ -53,11 +53,5 @@ namespace CK.SqlServer
         /// </summary>
         bool IsExplicitlyOpened { get; }
 
-        /// <summary>
-        /// Extensibility point: returns a <see cref="DbConnection"/> that wraps this <see cref="Connection"/>.
-        /// </summary>
-        /// <returns>A connection wrapper.</returns>
-        DbConnection GetDbConnection();
-
     }
 }

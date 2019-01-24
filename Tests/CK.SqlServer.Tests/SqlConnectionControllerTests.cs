@@ -68,22 +68,9 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void Using_the_GetDbConnetion_connection_is_implicitly_opened_and_closed()
+        public void Direct_open_close_of_the_connection_is_possible()
         {
-            using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
-            {
-                ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-                c.GetDbConnection().Invoking( dbCon => dbCon.Open() ).Should().NotThrow();
-                c.Connection.State.Should().Be( ConnectionState.Open );
-                c.GetDbConnection().Invoking( dbCon => dbCon.Close() ).Should().NotThrow();
-                c.Connection.State.Should().Be( ConnectionState.Closed );
-            }
-        }
-
-        [Test]
-        public void Using_the_GetDbConnetion_to_issue_a_command_automatically_opens_the_connection()
-        {
-            void DoSomething( DbConnection con )
+            void DoSomething( SqlConnection con )
             {
                 bool wasClosed = con.State == ConnectionState.Closed;
                 if( wasClosed ) con.Open();
@@ -98,34 +85,34 @@ namespace CK.SqlServer.Tests
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
 
                 // Closed.
-                DoSomething( c.GetDbConnection() );
+                DoSomething( c.Connection );
+                c.Connection.State.Should().Be( ConnectionState.Closed );
 
                 using( c.ExplicitOpen() )
                 {
-                    DoSomething( c.GetDbConnection() );
+                    c.Connection.State.Should().Be( ConnectionState.Open );
+                    DoSomething( c.Connection );
+                    c.Connection.State.Should().Be( ConnectionState.Open );
                 }
+                c.Connection.State.Should().Be( ConnectionState.Closed );
             }
         }
 
         [Test]
-        public void Directly_opening_a_connection_throws_but_SqlStandardCallContext_Dispose_cleans_up()
+        public void Directly_opening_and_closing_connection_async()
         {
             SqlConnection directRef;
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 directRef = c.Connection;
-                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() )
-                    .Should().Throw<InvalidOperationException>().WithMessage( "*ISqlConnectionController*" );
-                c.Connection.State.Should().Be( ConnectionState.Open, "Unfortunately, the connection has been opened." );
-                c.Connection.Invoking( oCon => oCon.Close() )
-                    .Should().Throw<InvalidOperationException>().WithMessage( "*ISqlConnectionController*" );
-                // Open it again (ignoring the exception).
-                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() )
-                    .Should().Throw<InvalidOperationException>().WithMessage( "*ISqlConnectionController*" );
+                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() ).Should().NotThrow();
+                c.Connection.State.Should().Be( ConnectionState.Open );
+                c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
+                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() ).Should().NotThrow();
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
-            directRef.State.Should().Be( ConnectionState.Closed, "Our Dispose does the job of at leas cleaning all..." );
+            directRef.State.Should().Be( ConnectionState.Closed );
         }
     }
 }
