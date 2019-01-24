@@ -148,7 +148,6 @@ namespace CK.SqlServer
                 return ImplicitOpenAsync( cancellationToken );
             }
 
-
             public override void Close()
             {
                 ImplicitClose();
@@ -165,7 +164,7 @@ namespace CK.SqlServer
 
             protected override DbCommand CreateDbCommand() 
             {
-                var cmd = _connection.CreateCommand();
+                var cmd = new SqlCommand( null, _connection );
                 cmd.Transaction = Transaction;
                 return cmd;
             }

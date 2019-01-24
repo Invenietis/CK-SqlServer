@@ -2,6 +2,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
@@ -63,6 +64,46 @@ namespace CK.SqlServer.Tests
                 c.Connection.State.Should().Be( ConnectionState.Open );
                 d3.Dispose();
                 c.Connection.State.Should().Be( ConnectionState.Closed );
+            }
+        }
+
+        [Test]
+        public void Using_the_GetDbConnetion_connection_is_implicitly_opened_and_closed()
+        {
+            using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
+            {
+                ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
+                c.GetDbConnection().Invoking( dbCon => dbCon.Open() ).Should().NotThrow();
+                c.Connection.State.Should().Be( ConnectionState.Open );
+                c.GetDbConnection().Invoking( dbCon => dbCon.Close() ).Should().NotThrow();
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+            }
+        }
+
+        [Test]
+        public void Using_the_GetDbConnetion_to_issue_a_command_automatically_opens_the_connection()
+        {
+            void DoSomething( DbConnection con )
+            {
+                bool wasClosed = con.State == ConnectionState.Closed;
+                if( wasClosed ) con.Open();
+                var cmd = con.CreateCommand();
+                cmd.CommandText = "select 1;";
+                cmd.ExecuteScalar().Should().Be( 1 );
+                if( wasClosed ) con.Close();
+            }
+
+            using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
+            {
+                ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
+
+                // Closed.
+                DoSomething( c.GetDbConnection() );
+
+                using( c.ExplicitOpen() )
+                {
+                    DoSomething( c.GetDbConnection() );
+                }
             }
         }
 
