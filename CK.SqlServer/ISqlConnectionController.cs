@@ -24,8 +24,8 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the controlled actual connection.
         /// It can be opened or closed either by <see cref="ExplicitOpen"/>, <see cref="ExplicitOpenAsync"/>
-        /// or thanks to <see cref="GetDbConnection"/> but MUST not be opened or closed directly:
-        /// an <see cref="InvalidOperationException"/> will be thrown is such case.
+        /// or can be opened/closed directly locally: when opening it directly (the <see cref="SqlConnection.State"/>
+        /// MUST be closed), it must be closed directly.
         /// </summary>
         SqlConnection Connection { get; }
 

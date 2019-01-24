@@ -9,20 +9,23 @@ using System.Text;
 
 namespace CK.SqlServer
 {
+    /// <summary>
+    /// Specializes <see cref="SqlStandardCallContext"/> to offer transaction support.
+    /// </summary>
     public class SqlTransactionCallContext : SqlStandardCallContext, ISqlTransactionCallContext
     {
         /// <summary>
         /// Initializes a new <see cref="SqlTransactionCallContext"/> that may be bound to an existing monitor
         /// or to a command executor. 
         /// <para>
-        /// If a <paramref name="executor"/> is provided, the protected <see cref="OnCommandExecuting"/>,
-        /// <see cref="OnCommandExecuted"/> and <see cref="OnCommandError"/> are no more called: it is up to
-        /// the external executor to fully handle command execution.
+        /// If a <paramref name="executor"/> is provided, the protected <see cref="SqlStandardCallContext.OnCommandExecuting"/>,
+        /// <see cref="SqlStandardCallContext.OnCommandExecuted"/> and <see cref="SqlStandardCallContext.OnCommandError"/> are no
+        /// more called: it is up to the external executor to fully handle command execution.
         /// </para>
         /// </summary>
         /// <param name="monitor">
         /// Optional monitor to use. When null, a new <see cref="ActivityMonitor"/> will be created
-        /// when <see cref="Monitor"/> property is accessed.
+        /// when <see cref="SqlStandardCallContext.Monitor">Monitor</see> property is accessed.
         /// </param>
         /// <param name="executor">
         /// Optional command executor to which all command execution will be forwarded.
