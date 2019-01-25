@@ -14,6 +14,28 @@ namespace CK.SqlServer
     public static class SqlConnectionControllerExtension
     {
         /// <summary>
+        /// Simple relay to <see cref="ISqlConnectionController.ExplicitOpen"/> that forgets the
+        /// returned IDisposable. The connection will remain opened until the holding <see cref="IDisposableSqlCallContext"/>
+        /// is disposed.
+        /// </summary>
+        /// <param name="ctx">This connection controller.</param>
+        public static void PreOpen( this ISqlConnectionController ctx )
+        {
+            ctx.ExplicitOpen();
+        }
+
+        /// <summary>
+        /// Simple relay to <see cref="ISqlConnectionController.ExplicitOpenAsync(CancellationToken)"/> that forgets the
+        /// returned IDisposable. The connection will remain opened until the holding <see cref="IDisposableSqlCallContext"/>
+        /// is disposed.
+        /// </summary>
+        /// <param name="ctx">This connection controller.</param>
+        public static Task PreOpenAsync( this ISqlConnectionController ctx, CancellationToken cancellationToken = default( CancellationToken ) )
+        {
+            return ctx.ExplicitOpenAsync( cancellationToken );
+        }
+
+        /// <summary>
         /// Executes the given command synchronously, relying on a function to handle the actual command
         /// execution and result construction.
         /// </summary>
@@ -27,7 +49,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
             {
-                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, innerExecutor, @this.Transaction );
+                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor);
             }
         }
 
@@ -46,7 +68,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync() )
             {
-                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, innerExecutor, @this.Transaction, cancellationToken );
+                return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor, cancellationToken);
             }
         }
 
@@ -61,7 +83,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
             {
-                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteNonQuery(), @this.Transaction );
+                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteNonQuery());
             }
         }
 
@@ -79,7 +101,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
             {
-                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, cmd, c => c.ExecuteScalar(), @this.Transaction );
+                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteScalar());
             }
         }
 
@@ -96,7 +118,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync() )
             {
-                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ( c, t ) => c.ExecuteNonQueryAsync( t ), @this.Transaction, cancellationToken );
+                return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, (c, t) => c.ExecuteNonQueryAsync(t), cancellationToken);
             }
         }
 
@@ -115,7 +137,7 @@ namespace CK.SqlServer
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync() )
             {
-                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, cmd, ( c, t ) => c.ExecuteScalarAsync( t ), @this.Transaction, cancellationToken );
+                return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, (c, t) => c.ExecuteScalarAsync(t), cancellationToken);
             }
         }
 

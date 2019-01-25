@@ -367,9 +367,9 @@ namespace CK.SqlServer
         T ISqlCommandExecutor.ExecuteQuery<T>(
             IActivityMonitor monitor,
             SqlConnection connection,
+            SqlTransaction transaction,
             SqlCommand cmd,
-            Func<SqlCommand, T> innerExecutor,
-            SqlTransaction transaction )
+            Func<SqlCommand, T> innerExecutor)
         {
             Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
@@ -416,10 +416,10 @@ namespace CK.SqlServer
         async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>(
             IActivityMonitor monitor,
             SqlConnection connection,
+            SqlTransaction transaction,
             SqlCommand cmd,
             Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
-            SqlTransaction transaction,
-            CancellationToken cancellationToken )
+            CancellationToken cancellationToken)
         {
             Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;

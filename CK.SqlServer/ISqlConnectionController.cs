@@ -11,7 +11,7 @@ namespace CK.SqlServer
 {
     /// <summary>
     /// Controls the opening or closing of <see cref="SqlConnection"/> objects and
-    /// supports comprehensive helpers to ease database call thanks to <see cref="SqlConnectionControllerExtension"/>
+    /// supports minimal helpers to ease database calls thanks to <see cref="SqlConnectionControllerExtension"/>
     /// extension methods.
     /// </summary>
     public interface ISqlConnectionController
@@ -36,20 +36,26 @@ namespace CK.SqlServer
 
         /// <summary>
         /// Opens the connection to the database if it were closed.
-        /// Returns a IDisposable that will auto close it.
+        /// The internal count is always incremented.
+        /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+        /// If this IDisposable is not disposed, the connection will be automatically disposed
+        /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
         /// </summary>
-        /// <returns>A IDisposable that mustbe disposed.</returns>
+        /// <returns>A IDisposable that can be disposed.</returns>
         IDisposable ExplicitOpen();
 
         /// <summary>
         /// Opens the connection to the database if it were closed.
-        /// Returns a IDisposable that will auto close it.
+        /// The internal count is always incremented.
+        /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+        /// If this IDisposable is not disposed, the connection will be automatically disposed
+        /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
         /// </summary>
-        /// <returns>A IDisposable that mustbe disposed.</returns>
+        /// <returns>A IDisposable that can be disposed.</returns>
         Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default( CancellationToken ) );
 
         /// <summary>
-        /// Gets whether the connection has been explicitly opened.
+        /// Gets whether the connection has been explicitly opened at least once.
         /// </summary>
         bool IsExplicitlyOpened { get; }
 

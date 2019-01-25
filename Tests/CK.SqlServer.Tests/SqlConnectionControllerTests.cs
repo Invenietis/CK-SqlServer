@@ -1,9 +1,11 @@
+using CK.Core;
 using FluentAssertions;
 using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Threading;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
 
@@ -113,6 +115,37 @@ namespace CK.SqlServer.Tests
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
             directRef.State.Should().Be( ConnectionState.Closed );
+        }
+
+        class ExternalExecutor : ISqlCommandExecutor
+        {
+            public T ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, T> innerExecutor, SqlTransaction transaction )
+            {
+                monitor.Should().BeSameAs( TestHelper.Monitor );
+                connection.Should().NotBeNull();
+                transaction.Should().BeNull( "We don't have transaction here." );
+                cmd.CommandText.Should().Be( "some text" );
+                return default( T );
+            }
+
+            public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, SqlTransaction transaction, CancellationToken cancellationToken = default( CancellationToken ) )
+            {
+                monitor.Should().BeSameAs( TestHelper.Monitor );
+                connection.Should().NotBeNull();
+                transaction.Should().BeNull( "We don't have transaction here." );
+                cmd.CommandText.Should().Be( "some text" );
+                return Task.FromResult( default( T ) );
+            }
+        }
+
+        [Test]
+        public void external_executor_receives_correctly_configured_command_and_opened_connection()
+        {
+            using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
+            {
+                ctx[TestHelper.MasterConnectionString].ExecuteScalar( new SqlCommand( "some text" ) )
+                    .Should().Be( 0 );
+            }
         }
     }
 }

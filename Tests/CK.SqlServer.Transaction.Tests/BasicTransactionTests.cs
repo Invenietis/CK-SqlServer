@@ -36,6 +36,7 @@ namespace CK.SqlServer.Transaction.Tests
         }
 
         [Test]
+        [SetUICulture( "en-US" )]
         public void nested_transactions_are_not_supported()
         {
             TestHelper.EnsureDatabase();
@@ -43,9 +44,41 @@ namespace CK.SqlServer.Transaction.Tests
             {
                 using( var t1 = c.BeginTransaction() )
                 {
+                    c.BeginTransaction();
                     c.Invoking( _ => _.BeginTransaction() ).Should().Throw<InvalidOperationException>();
                 }
             }
         }
+
+        [Test]
+        [SetUICulture( "en-US" )]
+        public void command_MUST_be_associated_to_the_connection_transaction()
+        {
+            using( var c = TestHelper.CreateOpenedConnection() )
+            using( var cmd = new SqlCommand( "select 1;" ) )
+            {
+                var t = c.BeginTransaction();
+                cmd.Connection = c;
+                cmd.ExecuteScalar();
+                cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
+            }
+        }
+
+        [Test]
+        [SetUICulture( "en-US" )]
+        public void connection_and_transaction_must_exactly_match()
+        {
+            using( var c1 = TestHelper.CreateOpenedConnection() )
+            using( var c2 = TestHelper.CreateOpenedConnection() )
+            using( var cmd = new SqlCommand( "select 1;" ) )
+            {
+                var t1 = c1.BeginTransaction();
+                cmd.Connection = c2;
+                cmd.Transaction = t1;
+                cmd.ExecuteScalar();
+                cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
+            }
+        }
+
     }
 }
