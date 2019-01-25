@@ -44,7 +44,6 @@ namespace CK.SqlServer.Transaction.Tests
             {
                 using( var t1 = c.BeginTransaction() )
                 {
-                    c.BeginTransaction();
                     c.Invoking( _ => _.BeginTransaction() ).Should().Throw<InvalidOperationException>();
                 }
             }
@@ -59,7 +58,6 @@ namespace CK.SqlServer.Transaction.Tests
             {
                 var t = c.BeginTransaction();
                 cmd.Connection = c;
-                cmd.ExecuteScalar();
                 cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
             }
         }
@@ -75,7 +73,6 @@ namespace CK.SqlServer.Transaction.Tests
                 var t1 = c1.BeginTransaction();
                 cmd.Connection = c2;
                 cmd.Transaction = t1;
-                cmd.ExecuteScalar();
                 cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
             }
         }
