@@ -119,7 +119,7 @@ namespace CK.SqlServer.Tests
 
         class ExternalExecutor : ISqlCommandExecutor
         {
-            public T ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, T> innerExecutor, SqlTransaction transaction )
+            public T ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
             {
                 monitor.Should().BeSameAs( TestHelper.Monitor );
                 connection.Should().NotBeNull();
@@ -128,7 +128,7 @@ namespace CK.SqlServer.Tests
                 return default( T );
             }
 
-            public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, SqlTransaction transaction, CancellationToken cancellationToken = default( CancellationToken ) )
+            public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken = default( CancellationToken ) )
             {
                 monitor.Should().BeSameAs( TestHelper.Monitor );
                 connection.Should().NotBeNull();
@@ -144,7 +144,7 @@ namespace CK.SqlServer.Tests
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
             {
                 ctx[TestHelper.MasterConnectionString].ExecuteScalar( new SqlCommand( "some text" ) )
-                    .Should().Be( 0 );
+                    .Should().Be( null );
             }
         }
     }
