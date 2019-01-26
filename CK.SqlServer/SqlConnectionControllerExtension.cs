@@ -29,6 +29,7 @@ namespace CK.SqlServer
         /// returned IDisposable. The connection will remain opened until the holding <see cref="IDisposableSqlCallContext"/>
         /// is disposed.
         /// </summary>
+        /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <param name="ctx">This connection controller.</param>
         public static Task PreOpenAsync( this ISqlConnectionController ctx, CancellationToken cancellationToken = default( CancellationToken ) )
         {

@@ -332,6 +332,12 @@ namespace CK.SqlServer
             }
         }
 
+        /// <summary>
+        /// Creates a new <see cref="TransactionController"/> instead of a
+        /// base <see cref="SqlStandardCallContext.Controller"/>.
+        /// </summary>
+        /// <param name="connectionString">The connection string.</param>
+        /// <returns>A transaction controller.</returns>
         protected override Controller CreateController( string connectionString )
         {
             return new TransactionController( this, connectionString );

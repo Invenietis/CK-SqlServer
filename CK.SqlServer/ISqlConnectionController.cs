@@ -22,7 +22,9 @@ namespace CK.SqlServer
         ISqlCallContext SqlCallContext { get; }
 
         /// <summary>
-        /// Gets the controlled actual connection.
+        /// Gets the connection string.
+        /// Note that this is the original string, not the one available on the <see cref="Connection"/> since
+        /// they may differ.
         /// It can be opened or closed either by <see cref="ExplicitOpen"/>, <see cref="ExplicitOpenAsync"/>
         /// or can be opened/closed directly locally: when opening it directly (the <see cref="SqlConnection.State"/>
         /// MUST be closed), it must be closed directly.

@@ -91,6 +91,10 @@ namespace CK.SqlServer
             }
         }
 
+        /// <summary>
+        /// Implements <see cref="ISqlConnectionController"/>.
+        /// This class should be specialized by specialized call contexts.
+        /// </summary>
         protected class Controller : ISqlConnectionController
         {
             readonly SqlConnection _connection;
@@ -101,7 +105,12 @@ namespace CK.SqlServer
             bool _directOpen;
 
             bool _isOpeningOrClosing;
-            
+
+            /// <summary>
+            /// Initializes a new <see cref="Controller"/>.
+            /// </summary>
+            /// <param name="ctx">The holding context.</param>
+            /// <param name="connectionString">The connection string.</param>
             public Controller( SqlStandardCallContext ctx, string connectionString )
             {
                 _ctx = ctx;
@@ -135,14 +144,31 @@ namespace CK.SqlServer
                 }
             }
 
+            /// <summary>
+            /// Gets the connection string.
+            /// Note that this is the original string, not the one available on the <see cref="Connection"/> since
+            /// they may differ.
+            /// </summary>
             public string ConnectionString => _connectionString;
 
+            /// <summary>
+            /// Gets the connection itself.
+            /// </summary>
             public SqlConnection Connection => _connection;
 
+            /// <summary>
+            /// Gets a null transaction since at this level, transactions are not managed.  
+            /// </summary>
             public virtual SqlTransaction Transaction => null;
 
+            /// <summary>
+            /// Gets the context that contains this controller.
+            /// </summary>
             public ISqlCallContext SqlCallContext => _ctx;
 
+            /// <summary>
+            /// Gets whether this connection has been explicitly opened.
+            /// </summary>
             public bool IsExplicitlyOpened => _explicitOpenCount != 0;
 
             void DoOpen()
@@ -227,6 +253,14 @@ namespace CK.SqlServer
                 }
             }
 
+            /// <summary>
+            /// Opens the connection to the database if it were closed.
+            /// The internal count is always incremented.
+            /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+            /// If this IDisposable is not disposed, the connection will be automatically disposed
+            /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
+            /// </summary>
+            /// <returns>A IDisposable that can be disposed.</returns>
             public IDisposable ExplicitOpen()
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 && !_directOpen )
@@ -236,6 +270,14 @@ namespace CK.SqlServer
                 return new AutoCloser( this );
             }
 
+            /// <summary>
+            /// Opens the connection to the database if it were closed.
+            /// The internal count is always incremented.
+            /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+            /// If this IDisposable is not disposed, the connection will be automatically disposed
+            /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
+            /// </summary>
+            /// <returns>A IDisposable that can be disposed.</returns>
             public async Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default(CancellationToken) )
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 && !_directOpen )
@@ -245,10 +287,20 @@ namespace CK.SqlServer
                 return new AutoCloser( this );
             }
 
+            /// <summary>
+            /// Gets the current number of explicit opening.
+            /// </summary>
             protected int ExplicitOpenCount => _explicitOpenCount;
 
+            /// <summary>
+            /// Gets the current number of implicit opening.
+            /// </summary>
             protected int ImplicitOpenCount => _implicitOpenCount;
 
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
             protected void ImplicitClose()
             {
                 if( _implicitOpenCount > 0 )
@@ -260,6 +312,10 @@ namespace CK.SqlServer
                 }
             }
 
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
             protected void ImplicitOpen()
             {
                 if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 && !_directOpen )
@@ -268,6 +324,10 @@ namespace CK.SqlServer
                 }
             }
 
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
             protected Task ImplicitOpenAsync( CancellationToken cancellationToken )
             {
                 if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 && !_directOpen )
