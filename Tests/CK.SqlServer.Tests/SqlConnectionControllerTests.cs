@@ -139,6 +139,16 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
+        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_async()
+        {
+            using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
+            {
+                object o = await ctx[TestHelper.MasterConnectionString].ExecuteScalarAsync( new SqlCommand( "some text" ) );
+                o.Should().Be( null );
+            }
+        }
+
+        [Test]
         public void external_executor_receives_correctly_configured_command_and_opened_connection()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
@@ -147,5 +157,78 @@ namespace CK.SqlServer.Tests
                     .Should().Be( null );
             }
         }
+
+        [Test]
+        public void exec_SqlCommand_throws_a_SqlDetailedException_when_a_SqlException_is_thrown_async()
+        {
+            AsyncCallCatch<SqlDetailedException>( "select * from kexistepas;" );
+        }
+
+        [Test]
+        public void exec_SqlCommand_throws_a_SqlDetailedException_when_a_SqlException_is_thrown()
+        {
+            SyncCallCatch<SqlDetailedException>( "select * from kexistepas;" );
+        }
+
+        [Test]
+        public void exec_throws_SqlDetailedException_when_database_does_not_exist_async()
+        {
+            AsyncCallCatch<SqlDetailedException>( "select 1;", TestHelper.GetConnectionString( "kexistepas-db" ) );
+        }
+
+        [Test]
+        public void exec_throws_SqlDetailedException_when_database_does_not_exist()
+        {
+            SyncCallCatch<SqlDetailedException>( "select 1;", TestHelper.GetConnectionString( "kexistepas-db" ) );
+        }
+
+        [Test]
+        [Explicit( "When trying to resolve a bad server name it takes a loooooooong time." )]
+        public void exec_throws_SqlDetailedException_when_server_does_not_exist()
+        {
+            AsyncCallCatch<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
+        }
+
+        void AsyncCallCatch<TException>( string cmd, string connectionString = null )
+        {
+            using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
+            using( var command = new SqlCommand( cmd ) )
+            {
+                ISqlConnectionController con = c[connectionString ?? TestHelper.GetConnectionString()];
+                try
+                {
+                    // If the asynchronous process is lost (if the exception is not correctly managed),
+                    // this test will fail with a task Cancelled exception after:
+                    // - 30 second when testing for connection string.... because when trying to resolve a bad server name it takes a loooooooong time.
+                    // - 1 second in other cases.
+                    CancellationTokenSource source = new CancellationTokenSource();
+                    source.CancelAfter( connectionString == null ? 1000 : 30 * 1000 );
+                    con.ExecuteNonQueryAsync( command, source.Token )
+                        .Wait();
+                }
+                catch( AggregateException ex )
+                {
+                    Assert.That( ex.GetBaseException(), Is.InstanceOf<TException>() );
+                }
+            }
+        }
+
+        void SyncCallCatch<TException>( string cmd, string connectionString = null )
+        {
+            using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
+            using( var command = new SqlCommand( cmd ) )
+            {
+                ISqlConnectionController con = c[connectionString ?? TestHelper.GetConnectionString()];
+                try
+                {
+                    con.ExecuteNonQuery( command );
+                }
+                catch( Exception ex )
+                {
+                    Assert.That( ex, Is.InstanceOf<TException>() );
+                }
+            }
+        }
+
     }
 }

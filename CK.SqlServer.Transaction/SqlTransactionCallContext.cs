@@ -68,7 +68,7 @@ namespace CK.SqlServer
         public new ISqlConnectionTransactionController GetConnectionController( ISqlConnectionStringProvider provider ) => (ISqlConnectionTransactionController)GetController( provider.ConnectionString );
 
 
-        class TransactionController : ControlledSqlConnection, ISqlConnectionTransactionController
+        class TransactionController : Controller, ISqlConnectionTransactionController
         {
             int _transactionCount;
 
@@ -332,7 +332,7 @@ namespace CK.SqlServer
             }
         }
 
-        protected override ControlledSqlConnection CreateController( string connectionString )
+        protected override Controller CreateController( string connectionString )
         {
             return new TransactionController( this, connectionString );
         }

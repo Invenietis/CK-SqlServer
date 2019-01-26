@@ -75,11 +75,11 @@ namespace CK.SqlServer
         {
             if( _cache != null )
             {
-                ControlledSqlConnection c = _cache as ControlledSqlConnection;
+                Controller c = _cache as Controller;
                 if( c != null ) c.DisposeConnection();
                 else
                 {
-                    ControlledSqlConnection[] cache = _cache as ControlledSqlConnection[];
+                    Controller[] cache = _cache as Controller[];
                     for( int i = 0; i < cache.Length; ++i ) cache[i].DisposeConnection();
                 }
                 _cache = null;
@@ -91,7 +91,7 @@ namespace CK.SqlServer
             }
         }
 
-        protected class ControlledSqlConnection : ISqlConnectionController
+        protected class Controller : ISqlConnectionController
         {
             readonly SqlConnection _connection;
             readonly string _connectionString;
@@ -102,7 +102,7 @@ namespace CK.SqlServer
 
             bool _isOpeningOrClosing;
             
-            public ControlledSqlConnection( SqlStandardCallContext ctx, string connectionString )
+            public Controller( SqlStandardCallContext ctx, string connectionString )
             {
                 _ctx = ctx;
                 _connectionString = connectionString;
@@ -152,16 +152,31 @@ namespace CK.SqlServer
                 {
                     _connection.Open();
                 }
+                catch( Exception ex )
+                {
+                    throw new SqlDetailedException( $"While opening connection to '{ConnectionString}'.", ex );
+                }
                 finally
                 {
                     _isOpeningOrClosing = false;
                 }
             }
 
-            Task DoOpenAsync( CancellationToken cancellationToken )
+            async Task DoOpenAsync( CancellationToken cancellationToken )
             {
                 _isOpeningOrClosing = true;
-                return _connection.OpenAsync( cancellationToken ).ContinueWith( _ => _isOpeningOrClosing = false );
+                try
+                {
+                    await _connection.OpenAsync( cancellationToken );
+                }
+                catch( Exception ex )
+                {
+                    throw new SqlDetailedException( $"While opening connection: '{ConnectionString}'.", ex );
+                }
+                finally
+                {
+                    _isOpeningOrClosing = false;
+                }
             }
 
             void DoClose()
@@ -170,6 +185,11 @@ namespace CK.SqlServer
                 try
                 {
                     _connection.Close();
+                }
+                catch( Exception ex )
+                {
+                    _ctx.Monitor.Warn( $"While closing connection: '{ConnectionString}'.", ex );
+                    throw;
                 }
                 finally
                 {
@@ -190,9 +210,9 @@ namespace CK.SqlServer
 
             sealed class AutoCloser : IDisposable
             {
-                ControlledSqlConnection _c;
+                Controller _c;
 
-                public AutoCloser( ControlledSqlConnection c )
+                public AutoCloser( Controller c )
                 {
                     _c = c;
                 }
@@ -256,7 +276,8 @@ namespace CK.SqlServer
                 }
                 return Task.CompletedTask;
             }
-            public void DisposeConnection()
+
+            internal void DisposeConnection()
             {
                 _isOpeningOrClosing = true;
                 _connection.Dispose();
@@ -271,32 +292,32 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
         /// <returns>The typed controller.</returns>
-        protected ControlledSqlConnection GetController( string connectionString )
+        protected Controller GetController( string connectionString )
         {
-            ControlledSqlConnection c;
+            Controller c;
             if( _cache == null )
             {
                 c = CreateController( connectionString );
                 _cache = c;
                 return c;
             }
-            ControlledSqlConnection newC;
-            c = _cache as ControlledSqlConnection;
+            Controller newC;
+            c = _cache as Controller;
             if( c != null )
             {
                 if( c.ConnectionString == connectionString ) return c;
                 newC = CreateController( connectionString );
-                _cache = new ControlledSqlConnection[] { c, newC };
+                _cache = new Controller[] { c, newC };
             }
             else
             {
-                var cache = (ControlledSqlConnection[])_cache;
+                var cache = (Controller[])_cache;
                 for( int i = 0; i < cache.Length; i++ )
                 {
                     c = cache[i];
                     if( c.ConnectionString == connectionString ) return c;
                 }
-                var newCache = new ControlledSqlConnection[cache.Length + 1];
+                var newCache = new Controller[cache.Length + 1];
                 Array.Copy( cache, newCache, cache.Length );
                 newC = CreateController( connectionString );
                 newCache[cache.Length] = newC;
@@ -313,8 +334,8 @@ namespace CK.SqlServer
         /// <returns>Null or the controller associated to the connection instance.</returns>
         public ISqlConnectionController FindController( SqlConnection connection )
         {
-            if( _cache is ControlledSqlConnection controller ) return controller.Connection == connection ? controller : null;
-            var cache = (ControlledSqlConnection[])_cache;
+            if( _cache is Controller controller ) return controller.Connection == connection ? controller : null;
+            var cache = (Controller[])_cache;
             foreach( var c in cache )
             {
                 if( c.Connection == connection ) return c;
@@ -327,9 +348,9 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connectionString">The connection string.</param>
         /// <returns>The new controller.</returns>
-        protected virtual ControlledSqlConnection CreateController( string connectionString )
+        protected virtual Controller CreateController( string connectionString )
         {
-            return new ControlledSqlConnection( this, connectionString );
+            return new Controller( this, connectionString );
         }
 
         /// <summary>
@@ -396,6 +417,11 @@ namespace CK.SqlServer
                 {
                     e = SqlDetailedException.Create( cmd, ex, retryCount++ );
                 }
+                catch( Exception ex )
+                {
+                    Monitor.Fatal( ex );
+                    throw;
+                }
                 Debug.Assert( e != null );
                 Monitor.Error( e );
                 if( previous == null ) previous = new List<SqlDetailedException>();
@@ -445,6 +471,11 @@ namespace CK.SqlServer
                 catch( SqlException ex )
                 {
                     e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                }
+                catch( Exception ex )
+                {
+                    Monitor.Fatal( ex );
+                    throw;
                 }
                 Debug.Assert( e != null );
                 Monitor.Error( e );
