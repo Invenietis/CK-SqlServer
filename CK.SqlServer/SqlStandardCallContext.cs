@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
@@ -90,93 +92,257 @@ namespace CK.SqlServer
         }
 
         /// <summary>
-        /// Implements <see cref="ISqlConnectionController"/>. 
+        /// Implements <see cref="ISqlConnectionController"/>.
+        /// This class should be specialized by specialized call contexts.
         /// </summary>
         protected class Controller : ISqlConnectionController
         {
-            readonly SqlStandardCallContext _ctx;
-            internal readonly string ConnectionString;
             readonly SqlConnection _connection;
+            readonly string _connectionString;
+            readonly SqlStandardCallContext _ctx;
             int _explicitOpenCount;
             int _implicitOpenCount;
+            bool _directOpen;
 
+            bool _isOpeningOrClosing;
+
+            /// <summary>
+            /// Initializes a new <see cref="Controller"/>.
+            /// </summary>
+            /// <param name="ctx">The holding context.</param>
+            /// <param name="connectionString">The connection string.</param>
             public Controller( SqlStandardCallContext ctx, string connectionString )
             {
                 _ctx = ctx;
-                ConnectionString = connectionString;
+                _connectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
+                _connection.StateChange += OnConnectionStateChange;
             }
 
-            public SqlConnection Connection => _connection;
-
-            public virtual SqlTransaction Transaction => null;
-
-            public ISqlCallContext SqlCallContext => _ctx;
-
-            public int ExplicitOpenCount => _explicitOpenCount;
-
-            public void ExplicitClose()
+            void OnConnectionStateChange( object sender, System.Data.StateChangeEventArgs e )
             {
-                if( _explicitOpenCount > 0 )
+                if( _isOpeningOrClosing ) return;
+
+                if( !_isOpeningOrClosing
+                    && e.CurrentState != e.OriginalState
+                    && (e.CurrentState == ConnectionState.Open || e.CurrentState == ConnectionState.Closed) )
                 {
-                    if( --_explicitOpenCount == 0 && _implicitOpenCount == 0 )
+                    if( e.CurrentState == ConnectionState.Open )
                     {
-                        _connection.Close();
+                        // There is nothing more to do here since an actual connection cannot be opened twice,
+                        // it means that is was closed.
+                        _directOpen = true;
+                    }
+                    else
+                    {
+                        if( !_directOpen )
+                        {
+                            throw new InvalidOperationException( "Direct SqlConnection.Close() is allowed only if it was Open() or OpenAsync() directly." );
+                        }
+                        _directOpen = false;
                     }
                 }
             }
 
-            public void ExplicitOpen()
+            /// <summary>
+            /// Gets the connection string.
+            /// Note that this is the original string, not the one available on the <see cref="Connection"/> since
+            /// they may differ.
+            /// </summary>
+            public string ConnectionString => _connectionString;
+
+            /// <summary>
+            /// Gets the connection itself.
+            /// </summary>
+            public SqlConnection Connection => _connection;
+
+            /// <summary>
+            /// Gets a null transaction since at this level, transactions are not managed.  
+            /// </summary>
+            public virtual SqlTransaction Transaction => null;
+
+            /// <summary>
+            /// Gets the context that contains this controller.
+            /// </summary>
+            public ISqlCallContext SqlCallContext => _ctx;
+
+            /// <summary>
+            /// Gets whether this connection has been explicitly opened.
+            /// </summary>
+            public bool IsExplicitlyOpened => _explicitOpenCount != 0;
+
+            void DoOpen()
             {
-                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
+                _isOpeningOrClosing = true;
+                try
                 {
                     _connection.Open();
                 }
-            }
-
-            public Task ExplicitOpenAsync()
-            {
-                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 )
+                catch( Exception ex )
                 {
-                    return _connection.OpenAsync();
+                    throw new SqlDetailedException( $"While opening connection to '{ConnectionString}'.", ex );
                 }
-                return Task.CompletedTask;
+                finally
+                {
+                    _isOpeningOrClosing = false;
+                }
             }
 
+            async Task DoOpenAsync( CancellationToken cancellationToken )
+            {
+                _isOpeningOrClosing = true;
+                try
+                {
+                    await _connection.OpenAsync( cancellationToken );
+                }
+                catch( Exception ex )
+                {
+                    throw new SqlDetailedException( $"While opening connection: '{ConnectionString}'.", ex );
+                }
+                finally
+                {
+                    _isOpeningOrClosing = false;
+                }
+            }
+
+            void DoClose()
+            {
+                _isOpeningOrClosing = true;
+                try
+                {
+                    _connection.Close();
+                }
+                catch( Exception ex )
+                {
+                    _ctx.Monitor.Warn( $"While closing connection: '{ConnectionString}'.", ex );
+                    throw;
+                }
+                finally
+                {
+                    _isOpeningOrClosing = false;
+                }
+            }
+
+            internal void ExplicitClose()
+            {
+                if( _explicitOpenCount > 0 )
+                {
+                    if( --_explicitOpenCount == 0 && _implicitOpenCount == 0 && !_directOpen )
+                    {
+                        DoClose();
+                    }
+                }
+            }
+
+            sealed class AutoCloser : IDisposable
+            {
+                Controller _c;
+
+                public AutoCloser( Controller c )
+                {
+                    _c = c;
+                }
+
+                public void Dispose()
+                {
+                    if( _c != null )
+                    {
+                        _c.ExplicitClose();
+                        _c = null;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Opens the connection to the database if it were closed.
+            /// The internal count is always incremented.
+            /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+            /// If this IDisposable is not disposed, the connection will be automatically disposed
+            /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
+            /// </summary>
+            /// <returns>A IDisposable that can be disposed.</returns>
+            public IDisposable ExplicitOpen()
+            {
+                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 && !_directOpen )
+                {
+                    DoOpen();
+                }
+                return new AutoCloser( this );
+            }
+
+            /// <summary>
+            /// Opens the connection to the database if it were closed.
+            /// The internal count is always incremented.
+            /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+            /// If this IDisposable is not disposed, the connection will be automatically disposed
+            /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
+            /// </summary>
+            /// <returns>A IDisposable that can be disposed.</returns>
+            public async Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default(CancellationToken) )
+            {
+                if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 && !_directOpen )
+                {
+                    await DoOpenAsync( cancellationToken ).ConfigureAwait( false );
+                }
+                return new AutoCloser( this );
+            }
+
+            /// <summary>
+            /// Gets the current number of explicit opening.
+            /// </summary>
+            protected int ExplicitOpenCount => _explicitOpenCount;
+
+            /// <summary>
+            /// Gets the current number of implicit opening.
+            /// </summary>
             protected int ImplicitOpenCount => _implicitOpenCount;
 
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
             protected void ImplicitClose()
             {
                 if( _implicitOpenCount > 0 )
                 {
-                    if( --_implicitOpenCount == 0 && _explicitOpenCount == 0 )
+                    if( --_implicitOpenCount == 0 && _explicitOpenCount == 0 && !_directOpen )
                     {
-                        _connection.Close();
+                        DoClose();
                     }
                 }
             }
 
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
             protected void ImplicitOpen()
             {
-                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
+                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 && !_directOpen )
                 {
-                    _connection.Open();
+                    DoOpen();
                 }
             }
 
-            protected Task ImplicitOpenAsync()
+            /// <summary>
+            /// Reserved for specialization.
+            /// A secondary copunter is used for implicit open/close.
+            /// </summary>
+            protected Task ImplicitOpenAsync( CancellationToken cancellationToken )
             {
-                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 )
+                if( ++_implicitOpenCount == 1 && _explicitOpenCount == 0 && !_directOpen )
                 {
-                    return _connection.OpenAsync();
+                    return DoOpenAsync( cancellationToken );
                 }
                 return Task.CompletedTask;
             }
 
             internal void DisposeConnection()
             {
+                _isOpeningOrClosing = true;
                 _connection.Dispose();
             }
+
         }
 
         /// <summary>
@@ -279,8 +445,14 @@ namespace CK.SqlServer
         /// <returns>The connection controller to use.</returns>
         public ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider ) => GetController( provider.ConnectionString );
 
-        T ISqlCommandExecutor.ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
+        T ISqlCommandExecutor.ExecuteQuery<T>(
+            IActivityMonitor monitor,
+            SqlConnection connection,
+            SqlTransaction transaction,
+            SqlCommand cmd,
+            Func<SqlCommand, T> innerExecutor)
         {
+            Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
             List<SqlDetailedException> previous = null;
@@ -290,14 +462,12 @@ namespace CK.SqlServer
                 SqlDetailedException e = null;
                 try
                 {
-                    using( connection.EnsureOpen() )
-                    {
-                        cmd.Connection = connection;
-                        OnCommandExecuting( cmd, retryCount );
+                    cmd.Connection = connection;
+                    cmd.Transaction = transaction;
+                    OnCommandExecuting( cmd, retryCount );
 
-                        result = innerExecutor( cmd );
-                        break;
-                    }
+                    result = innerExecutor( cmd );
+                    break;
                 }
                 catch( IOException ex )
                 {
@@ -306,6 +476,11 @@ namespace CK.SqlServer
                 catch( SqlException ex )
                 {
                     e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                }
+                catch( Exception ex )
+                {
+                    Monitor.Fatal( ex );
+                    throw;
                 }
                 Debug.Assert( e != null );
                 Monitor.Error( e );
@@ -324,8 +499,15 @@ namespace CK.SqlServer
             return result;
         }
 
-        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken )
+        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>(
+            IActivityMonitor monitor,
+            SqlConnection connection,
+            SqlTransaction transaction,
+            SqlCommand cmd,
+            Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
+            CancellationToken cancellationToken)
         {
+            Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
             List<SqlDetailedException> previous = null;
@@ -335,14 +517,12 @@ namespace CK.SqlServer
                 SqlDetailedException e = null;
                 try
                 {
-                    using( await connection.EnsureOpenAsync( cancellationToken ).ConfigureAwait( false ) )
-                    {
-                        cmd.Connection = connection;
-                        OnCommandExecuting( cmd, retryCount );
+                    cmd.Connection = connection;
+                    cmd.Transaction = transaction;
+                    OnCommandExecuting( cmd, retryCount );
 
-                        result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
-                        break;
-                    }
+                    result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
+                    break;
                 }
                 catch( IOException ex )
                 {
@@ -351,6 +531,11 @@ namespace CK.SqlServer
                 catch( SqlException ex )
                 {
                     e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                }
+                catch( Exception ex )
+                {
+                    Monitor.Fatal( ex );
+                    throw;
                 }
                 Debug.Assert( e != null );
                 Monitor.Error( e );

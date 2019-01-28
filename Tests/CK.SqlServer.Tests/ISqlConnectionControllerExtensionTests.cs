@@ -33,28 +33,19 @@ namespace CK.SqlServer.Tests
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 c.Connection.State.Should().Be( ConnectionState.Closed );
-                using( var disposer = c.Connection.EnsureOpen() )
-                {
-                    disposer.Should().NotBeNull();
-                    c.Connection.EnsureOpen().Should().BeNull();
-                }
-                c.Connection.State.Should().Be( ConnectionState.Closed );
-                using( c.Connection.EnsureOpen() )
-                {
-                    c.ExecuteNonQuery( create );
-                    c.ExecuteScalar( scalar ).Should().Be( "Three" );
-                    var rowResult = c.ExecuteSingleRow( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-                    rowResult.Item1.Should().Be( 1 );
-                    rowResult.Item2.Should().Be( "One" );
-                    var readerResult = c.ExecuteReader( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-                    readerResult.Should().HaveCount( 3 );
-                    readerResult[0].Item1.Should().Be( 1 );
-                    readerResult[1].Item2.Should().Be( "Two" );
-                    readerResult[2].Item2.Should().Be( "Three" );
-                    c.ExecuteNonQuery( clean );
-                }
-            }
 
+                c.ExecuteNonQuery( create );
+                c.ExecuteScalar( scalar ).Should().Be( "Three" );
+                var rowResult = c.ExecuteSingleRow( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
+                rowResult.Item1.Should().Be( 1 );
+                rowResult.Item2.Should().Be( "One" );
+                var readerResult = c.ExecuteReader( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
+                readerResult.Should().HaveCount( 3 );
+                readerResult[0].Item1.Should().Be( 1 );
+                readerResult[1].Item2.Should().Be( "Two" );
+                readerResult[2].Item2.Should().Be( "Three" );
+                c.ExecuteNonQuery( clean );
+            }
         }
 
         [Test]
@@ -72,26 +63,17 @@ namespace CK.SqlServer.Tests
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 c.Connection.State.Should().Be( ConnectionState.Closed );
-                using( var disposer = await c.Connection.EnsureOpenAsync() )
-                {
-                    disposer.Should().NotBeNull();
-                    (await c.Connection.EnsureOpenAsync()).Should().BeNull();
-                }
-                c.Connection.State.Should().Be( ConnectionState.Closed );
-                using( await c.Connection.EnsureOpenAsync() )
-                {
-                    await c.ExecuteNonQueryAsync( create );
-                    (await c.ExecuteScalarAsync( scalar )).Should().Be( "Three" );
-                    var rowResult = await c.ExecuteSingleRowAsync( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-                    rowResult.Item1.Should().Be( 1 );
-                    rowResult.Item2.Should().Be( "One" );
-                    var readerResult = await c.ExecuteReaderAsync( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-                    readerResult.Should().HaveCount( 3 );
-                    readerResult[0].Item1.Should().Be( 1 );
-                    readerResult[1].Item2.Should().Be( "Two" );
-                    readerResult[2].Item2.Should().Be( "Three" );
-                    await c.ExecuteNonQueryAsync( clean );
-                }
+                await c.ExecuteNonQueryAsync( create );
+                (await c.ExecuteScalarAsync( scalar )).Should().Be( "Three" );
+                var rowResult = await c.ExecuteSingleRowAsync( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
+                rowResult.Item1.Should().Be( 1 );
+                rowResult.Item2.Should().Be( "One" );
+                var readerResult = await c.ExecuteReaderAsync( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
+                readerResult.Should().HaveCount( 3 );
+                readerResult[0].Item1.Should().Be( 1 );
+                readerResult[1].Item2.Should().Be( "Two" );
+                readerResult[2].Item2.Should().Be( "Three" );
+                await c.ExecuteNonQueryAsync( clean );
             }
         }
 
@@ -172,22 +154,30 @@ namespace CK.SqlServer.Tests
             using( var ctx = new SqlStandardCallContext() )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-                c.Connection.Open();
-                ((int)c.ExecuteScalar( cmd )).Should().BeGreaterThan( 0 );
-                c.Connection.Close();
-                ((int)await c.ExecuteScalarAsync( cmd )).Should().BeGreaterThan( 0 );
-                cmd.CommandText = "select count(*) from sys.objects where name='no-object-here'";
-                using( await c.Connection.EnsureOpenAsync() )
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+                using( c.ExplicitOpen() )
                 {
+                    c.Connection.State.Should().Be( ConnectionState.Open );
+                    ((int)c.ExecuteScalar( cmd )).Should().BeGreaterThan( 0 );
+                }
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+                ((int)await c.ExecuteScalarAsync( cmd )).Should().BeGreaterThan( 0 );
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+                cmd.CommandText = "select count(*) from sys.objects where name='no-object-here'";
+                using( await c.ExplicitOpenAsync() )
+                {
+                    c.Connection.State.Should().Be( ConnectionState.Open );
                     ((int)await c.ExecuteScalarAsync( cmd )).Should().Be( 0 );
                 }
                 c.Connection.State.Should().Be( ConnectionState.Closed );
                 ((int)await c.ExecuteScalarAsync( cmd )).Should().Be( 0 );
+                c.Connection.State.Should().Be( ConnectionState.Closed );
                 cmd.CommandText = "select name from sys.tables where name='no-object-here'";
-                using( await c.Connection.EnsureOpenAsync() )
+                using( await c.ExplicitOpenAsync() )
                 {
                     (await c.ExecuteScalarAsync( cmd )).Should().BeNull();
                 }
+                c.Connection.State.Should().Be( ConnectionState.Closed );
             }
         }
     }
