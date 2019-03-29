@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="FullSignature">
+  <Class Name="CK.SqlServer.SqlTransactionCallContext">
+    <Position X="0.75" Y="8.5" Width="6.5" />
+    <NestedTypes>
+      <Class Name="CK.SqlServer.SqlTransactionCallContext.TransactionController" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>SqlTransactionCallContext.cs</NewMemberFileName>
+        </TypeIdentifier>
+        <Lollipop Position="0.2" />
+      </Class>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAABCAAAAAAAQAAAAAAgAAAAAAAAAAA=</HashCode>
+      <FileName>SqlTransactionCallContext.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Interface Name="CK.SqlServer.ISqlTransaction">
+    <Position X="2" Y="5.75" Width="2.5" />
+    <AssociationLine Name="Status" Type="CK.SqlServer.SqlTransactionStatus">
+      <MemberNameLabel ManuallyPlaced="true" ManuallySized="true">
+        <Position X="0.256" Y="-0.266" Height="0.162" Width="0.614" />
+      </MemberNameLabel>
+    </AssociationLine>
+    <AssociationLine Name="ConnectionController" Type="CK.SqlServer.ISqlConnectionTransactionController">
+      <MemberNameLabel ManuallyPlaced="true" ManuallySized="true">
+        <Position X="-1.543" Y="0.456" Height="0.162" Width="1.417" />
+      </MemberNameLabel>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAEAEAAAAAAAAAAAAAAAAAAAAACAAAAAAgACAAIA=</HashCode>
+      <FileName>ISqlTransaction.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="Status" />
+      <Property Name="ConnectionController" />
+    </ShowAsAssociation>
+  </Interface>
+  <Interface Name="CK.SqlServer.ISqlConnectionTransactionController">
+    <Position X="1" Y="3" Width="5.5" />
+    <AssociationLine Name="SqlCallContext" Type="CK.SqlServer.ISqlTransactionCallContext">
+      <MemberNameLabel ManuallyPlaced="true" ManuallySized="true">
+        <Position X="-1.258" Y="0.185" Height="0.182" Width="1.114" />
+      </MemberNameLabel>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAEABAAAAAAAAAAAAAAAAAAAAAAAAAAAAoAAAAIA=</HashCode>
+      <FileName>ISqlConnectionTransactionController.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="SqlCallContext" />
+    </ShowAsAssociation>
+  </Interface>
+  <Interface Name="CK.SqlServer.ISqlTransactionCallContext">
+    <Position X="0.5" Y="0.5" Width="6.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAACAAAAAAAAAAAAAAgAAAAAAAAAAA=</HashCode>
+      <FileName>ISqlTransactionCallContext.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Enum Name="CK.SqlServer.SqlTransactionStatus">
+    <Position X="5.5" Y="5.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAgAAAAACAAAAAAAAAAAEAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>SqlTransactionStatus.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

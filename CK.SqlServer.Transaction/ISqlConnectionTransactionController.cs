@@ -26,11 +26,6 @@ namespace CK.SqlServer
         int TransactionCount { get; }
 
         /// <summary>
-        /// Gets the <see cref="SqlTransaction"/> if one has been started, null otherwise. 
-        /// </summary>
-        SqlTransaction Transaction { get; }
-
-        /// <summary>
         /// Starts a transaction.
         /// Please read this before playing with isolation level: https://docs.microsoft.com/en-us/sql/t-sql/statements/set-transaction-isolation-level-transact-sql?view=sql-server-2017#remarks
         /// </summary>

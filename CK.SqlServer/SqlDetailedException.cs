@@ -15,21 +15,12 @@ namespace CK.SqlServer
     public class SqlDetailedException : Exception
     {
         /// <summary>
-        /// Initializes a new <see cref="SqlDetailedException"/> on an inner <see cref="SqlException"/>.
+        /// Initializes a new <see cref="SqlDetailedException"/> on an inner <see cref="Exception"/>
+        /// of any type.
         /// </summary>
         /// <param name="message">Message for this exception.</param>
         /// <param name="ex">Inner exception.</param>
-        public SqlDetailedException( string message, SqlException ex )
-            : base( message, ex )
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <see cref="SqlDetailedException"/> on an inner <see cref="IOException"/>.
-        /// </summary>
-        /// <param name="message">Message for this exception.</param>
-        /// <param name="ex">Inner exception.</param>
-        public SqlDetailedException( string message, IOException ex )
+        public SqlDetailedException( string message, Exception ex )
             : base( message, ex )
         {
         }
@@ -88,7 +79,7 @@ namespace CK.SqlServer
         public SqlException InnerSqlException => InnerException as SqlException;
 
         /// <summary>
-        /// Gets the <see cref="SqlException"/> or null if it is not a SqlException.
+        /// Gets the <see cref="IOException"/> or null if it is not a IOException.
         /// </summary>
         public IOException InnerIOException => InnerException as IOException;
 

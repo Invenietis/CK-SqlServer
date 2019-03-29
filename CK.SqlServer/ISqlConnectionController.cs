@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CK.SqlServer
 {
     /// <summary>
     /// Controls the opening or closing of <see cref="SqlConnection"/> objects and
-    /// supports comprehensive helpers to ease database call thanks to <see cref="SqlConnectionControllerExtension"/>
+    /// supports minimal helpers to ease database calls thanks to <see cref="SqlConnectionControllerExtension"/>
     /// extension methods.
     /// </summary>
     public interface ISqlConnectionController
@@ -20,36 +22,44 @@ namespace CK.SqlServer
         ISqlCallContext SqlCallContext { get; }
 
         /// <summary>
-        /// Gets the controlled actual connection.
-        /// It can be opened or closed.
+        /// Gets the connection string.
+        /// Note that this is the original string, not the one available on the <see cref="Connection"/> since
+        /// they may differ.
+        /// It can be opened or closed either by <see cref="ExplicitOpen"/>, <see cref="ExplicitOpenAsync"/>
+        /// or can be opened/closed directly locally: when opening it directly (the <see cref="SqlConnection.State"/>
+        /// MUST be closed), it must be closed directly.
         /// </summary>
         SqlConnection Connection { get; }
 
         /// <summary>
-        /// Opens the connection to the database if it were closed (only increments <see cref="ExplicitOpenCount"/> if the 
-        /// <see cref="Connection"/> were already opened). The connection will remain opened
-        /// until a corresponding explicit call to <see cref="ExplicitClose"/> is made.
+        /// Gets the <see cref="SqlTransaction"/> if one has been started, null otherwise. 
         /// </summary>
-        void ExplicitOpen();
+        SqlTransaction Transaction { get; }
 
         /// <summary>
-        /// Opens the connection to the database if it were closed (only increments <see cref="ExplicitOpenCount"/> if the 
-        /// <see cref="Connection"/> were already opened). The connection will remain opened
-        /// until a corresponding explicit call to <see cref="ExplicitClose"/> is made.
+        /// Opens the connection to the database if it were closed.
+        /// The internal count is always incremented.
+        /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+        /// If this IDisposable is not disposed, the connection will be automatically disposed
+        /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
         /// </summary>
-        Task ExplicitOpenAsync();
+        /// <returns>A IDisposable that can be disposed.</returns>
+        IDisposable ExplicitOpen();
 
         /// <summary>
-        /// Gets the current number of <see cref="ExplicitOpen"/>.
+        /// Opens the connection to the database if it were closed.
+        /// The internal count is always incremented.
+        /// Returns a IDisposable that will allow the connection to be disposed when disposed.
+        /// If this IDisposable is not disposed, the connection will be automatically disposed
+        /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
         /// </summary>
-        int ExplicitOpenCount { get; }
+        /// <returns>A IDisposable that can be disposed.</returns>
+        Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default( CancellationToken ) );
 
         /// <summary>
-        /// Closes the connection to the database: decrements <see cref="ExplicitOpenCount"/> and closes the 
-        /// connection if it is zero.
-        /// Calling this more times than <see cref="ExplicitOpen"/> is ignored (the <see cref="ExplicitOpenCount"/>
-        /// is never negative).
+        /// Gets whether the connection has been explicitly opened at least once.
         /// </summary>
-        void ExplicitClose();
+        bool IsExplicitlyOpened { get; }
+
     }
 }
