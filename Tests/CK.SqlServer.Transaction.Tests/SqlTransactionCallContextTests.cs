@@ -14,6 +14,12 @@ namespace CK.SqlServer.Transaction.Tests
     [TestFixture]
     public class SqlTransactionCallContextTests
     {
+        [SetUp]
+        public void EnsureDatabase()
+        {
+            TestHelper.EnsureDatabase();
+        }
+
         [Test]
         public void transaction_controller_implicitly_opens_the_connection()
         {
