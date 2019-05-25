@@ -14,6 +14,12 @@ namespace CK.SqlServer.Transaction.Tests
     [TestFixture]
     public class BasicTransactionTests
     {
+        [SetUp]
+        public void EnsureDatabase()
+        {
+            TestHelper.EnsureDatabase();
+        }
+
         [Test]
         public void opening_twice_a_connection_is_an_error_but_it_can_be_closed_multiple_times()
         {
@@ -39,7 +45,6 @@ namespace CK.SqlServer.Transaction.Tests
         [SetUICulture( "en-US" )]
         public void nested_transactions_are_not_supported()
         {
-            TestHelper.EnsureDatabase();
             using( var c = TestHelper.CreateOpenedConnection() )
             {
                 using( var t1 = c.BeginTransaction() )
