@@ -14,6 +14,12 @@ namespace CK.SqlServer.Transaction.Tests
     [TestFixture]
     public class SqlTransactionCallContextTests
     {
+        [SetUp]
+        public void EnsureDatabase()
+        {
+            TestHelper.EnsureDatabase();
+        }
+
         [Test]
         public void transaction_controller_implicitly_opens_the_connection()
         {
@@ -55,6 +61,43 @@ namespace CK.SqlServer.Transaction.Tests
                 messageId.Should().Be( 1, "One message has been created." );
                 messageId = DoRollbackAllAndDisposeTest( controller, 0, messageId );
                 messageId.Should().Be( 3, "Two messages have been created and cancelled." );
+            }
+        }
+
+        [Test]
+        public void basic_nested_transaction_test_with_ExplicitOpen_and_continue_on_the_same_connection()
+        {
+            // create table dbo.tTranTest( Id int identity(1,1) primary key, Msg varchar(50) not null );
+            ResetTranTestTable();
+            using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )
+            {
+                var controller = ctx.GetConnectionController( TestHelper.GetConnectionString() );
+                // The connection is maintained opened.
+                controller.ExplicitOpen();
+                DoCommitTest( controller, tranCount: 0, messageId: 0 ).Should().Be( 1, "messageId from 0 to 1." );
+                using( var tran = controller.BeginTransaction() )
+                {
+                    DoCommitTest( controller, 1, 1 ).Should().Be( 2, "messageId from 1 to 2." );
+                    DoCommitTest( controller, 1, 2 ).Should().Be( 3, "messageId from 2 to 3." );
+                    using( var tran2 = controller.BeginTransaction() )
+                    {
+                        DoCommitTest( controller, 2, 3 ).Should().Be( 4, "messageId from 3 to 4." );
+                        DoRollbackAllAndDisposeTest( controller, 2, 4 ).Should().Be( 6, "messageId from 4 to 6." );
+                        controller.TransactionCount.Should().Be( 0 );
+                        tran2.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                    }
+                    tran.Status.Should().Be( SqlTransactionStatus.Rollbacked );
+                }
+                controller.Connection.State.Should().Be( ConnectionState.Open );
+                DoCommitTest( controller, tranCount: 0, messageId: 6 )
+                    .Should().Be( 7, "messageId from 6 to 7 (The identity is out of transaction!)." );
+                ReadMessage( controller, 1 ).Should().NotBeNull( "Done before the transaction." );
+                ReadMessage( controller, 2 ).Should().BeNull( "in rollbacked transaction." );
+                ReadMessage( controller, 3 ).Should().BeNull();
+                ReadMessage( controller, 4 ).Should().BeNull();
+                ReadMessage( controller, 5 ).Should().BeNull();
+                ReadMessage( controller, 6 ).Should().BeNull();
+                ReadMessage( controller, 7 ).Should().NotBeNull( "Done after the transaction." );
             }
         }
 
