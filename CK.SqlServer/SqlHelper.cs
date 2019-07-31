@@ -20,15 +20,15 @@ namespace CK.SqlServer
         static double _timeoutFactor = 1.0;
 
         /// <summary>
-        /// Gets or sets a factor that can used to alter the <see cref="SqlCommand.CommandTimeout"/> configuration.
-        /// Obviously defaults to 1.0: by default, nothing is changed.
+        /// Gets or sets a factor that can used to alter the <see cref="SqlCommand.CommandTimeout"/> configuration (the default value for
+        /// command timeout is 30 seconds.).
+        /// This factor obviously defaults to 1.0 (by default, nothing is changed).
         /// <para>
-        /// (The default value for command timeout is 30 seconds.)
-        /// This value cannot be negative. A value of 0 indicates no limit: no SqlCommand will benefit of any timeout.
+        /// This value cannot be negative. A value of 0 indicates no limit: no more SqlCommand will benefit of any timeout.
         /// </para>
         /// <para>
-        /// Nothing is automatic here: using this property must be done explicitly by user code.
-        /// The recommended approach is: the sooner the better.
+        /// Nothing is automatic here: using this property must be done explicitly by user code, the recommended
+        /// approach being: the sooner the better.
         /// </para>
         /// <para>
         /// Right after the instanciation of the command (in any factory method) is the perfect place to apply
