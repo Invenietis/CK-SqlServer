@@ -2,12 +2,15 @@
   <Import Project="..\..\Common\Shared.props" />
   <PropertyGroup>
     <TargetFramework>net461</TargetFramework>
+    <IsPackable>False</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.SqlServer.Transaction\CK.SqlServer.Transaction.csproj" />
-    <PackageReference Include="CK.Testing.SqlServer" Version="0.9.0" />
-    <PackageReference Include="FluentAssertions" Version="5.6.0" />
-    <PackageReference Include="NUnit" Version="[2.6.4]" />
+    <PackageReference Include="CK.Testing.SqlServer" Version="0.10.0" />
+    <PackageReference Include="FluentAssertions" Version="5.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />

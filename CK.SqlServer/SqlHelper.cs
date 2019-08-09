@@ -17,6 +17,34 @@ namespace CK.SqlServer
     /// </summary>
     public static class SqlHelper
     {
+        static double _timeoutFactor = 1.0;
+
+        /// <summary>
+        /// Gets or sets a factor that can used to alter the <see cref="SqlCommand.CommandTimeout"/> configuration (the default value for
+        /// command timeout is 30 seconds.).
+        /// This factor obviously defaults to 1.0 (by default, nothing is changed).
+        /// <para>
+        /// This value cannot be negative. A value of 0 indicates no limit: no more SqlCommand will benefit of any timeout.
+        /// </para>
+        /// <para>
+        /// Nothing is automatic here: using this property must be done explicitly by user code, the recommended
+        /// approach being: the sooner the better.
+        /// </para>
+        /// <para>
+        /// Right after the instanciation of the command (in any factory method) is the perfect place to apply
+        /// this factor: this is to avoid multiple application of this factor that won't be easy to track.
+        /// </para>
+        /// </summary>
+        public static double CommandTimeoutFactor
+        {
+            get => _timeoutFactor;
+            set
+            {
+                if( value < 0 ) throw new ArgumentOutOfRangeException( "Must be zero or positive.", nameof( CommandTimeoutFactor ) );
+                _timeoutFactor = value;
+            }
+        }
+
         /// <summary>
         /// Standard name of the return value. Applied to functions and stored procedures.
         /// </summary>
