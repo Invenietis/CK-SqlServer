@@ -186,7 +186,8 @@ namespace CK.SqlServer.Tests
         [Explicit( "When trying to resolve a bad server name it takes a loooooooong time." )]
         public void exec_throws_SqlDetailedException_when_server_does_not_exist()
         {
-            AsyncCallCatch<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
+           Assume.That( TestHelper.IsExplicitAllowed, "Press Ctrl key to allow this test to run." );
+           AsyncCallCatch<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
         }
 
         void AsyncCallCatch<TException>( string cmd, string connectionString = null )
