@@ -9,7 +9,7 @@
     <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="11.1.2" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' != 'net461' ">
-    <PackageReference Include="System.Data.SqlClient" Version="4.6.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
