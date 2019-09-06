@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.SqlServer\CK.SqlServer.csproj" />
-    <PackageReference Include="CK.Testing.SqlServer" Version="0.11.1--0004-develop" />
+    <PackageReference Include="CK.Testing.SqlServer" Version="0.0.0--02fye76-local+v0.11.0" />
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="NUnitLite" Version="3.12.0" />
     <PackageReference Include="NUnit" Version="3.12.0" />
