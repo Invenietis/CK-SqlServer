@@ -1,0 +1,3 @@
+C:/Dev/CK/CK-Core-Projects/CK-SqlServer/Tests/CK.SqlServer.Tests/bin/Debug/net461/CK.SqlServer.Tests.dll
+C:/Dev/CK/CK-Core-Projects/CK-SqlServer/Tests/CK.SqlServer.NetCore.Tests/bin/Debug/netcoreapp2.1/CK.SqlServer.NetCore.Tests.dll
+C:/Dev/CK/CK-Core-Projects/CK-SqlServer/Tests/CK.SqlServer.Transaction.Tests/bin/Debug/net461/CK.SqlServer.Transaction.Tests.dll
