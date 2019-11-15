@@ -1,6 +1,10 @@
+using CK.Core;
+using FluentAssertions;
 using NUnit.Framework;
 using System;
 using System.Data;
+using System.Data.SqlClient;
+using static CK.Testing.SqlServerTestHelper;
 
 namespace CK.SqlServer.Tests
 {
@@ -30,6 +34,77 @@ namespace CK.SqlServer.Tests
                 if( s == "special:Guid" ) value = g;
             }
             Assert.That( SqlHelper.SqlValue( value, dbType ), Is.EqualTo( result ) );
+        }
+
+        [SetUp]
+        public void EnsureDatabase()
+        {
+            TestHelper.EnsureDatabase();
+            TestHelper.ExecuteScripts( "if not exists(select 1 from sys.schemas where name = 'CK') exec('create schema CK');" );
+        }
+
+        [Test]
+        public void SqlHelper_IsUtcMinValue_and_IsUtcMaxValue_works_for_datetime2()
+        {
+            using( var con = TestHelper.CreateOpenedConnection() )
+            using( var cmd = new SqlCommand() )
+            {
+                cmd.Connection = con;
+
+                cmd.CommandText = "select convert( datetime2(2), '00010101' )";
+                object oMinDate = cmd.ExecuteScalar();
+                oMinDate.Should().BeOfType<DateTime>();
+                oMinDate.Should().Be( Util.UtcMinValue );
+                SqlHelper.IsUtcMinValue( (DateTime)oMinDate ).Should().BeTrue();
+
+                cmd.CommandText = "select convert( datetime2(7), '99991231 23:59:59.9999999' )";
+                object oMaxDate = cmd.ExecuteScalar();
+                oMaxDate.Should().BeOfType<DateTime>();
+                oMaxDate.Should().Be( Util.UtcMaxValue );
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 7 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 6 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 5 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 4 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 3 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 2 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 1 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 0 ).Should().BeTrue();
+                Assert.Throws<ArgumentOutOfRangeException>( () => SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, -1 ) );
+                Assert.Throws<ArgumentOutOfRangeException>( () => SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 8 ) );
+
+                cmd.CommandText = "select convert( datetime2(2), '99991231 23:59:59.9999999' )";
+                object oMaxDate2 = cmd.ExecuteScalar();
+                oMaxDate2.Should().BeOfType<DateTime>();
+                oMaxDate2.Should().NotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
+                oMaxDate2.Should().Be( Util.UtcMaxValue.AddTicks( -99999 ) );
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 7 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 6 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 5 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 4 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 3 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 2 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 1 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 0 ).Should().BeTrue();
+
+                cmd.CommandText = "select convert( datetime2(0), '99991231 23:59:59.9999999' )";
+                object oMaxDate0 = cmd.ExecuteScalar();
+                oMaxDate0.Should().BeOfType<DateTime>();
+                oMaxDate0.Should().NotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
+                oMaxDate0.Should().Be( SqlHelper.UtcMaxValuePrecision0 );
+                SqlHelper.UtcMaxValuePrecision0.Should().Be( Util.UtcMaxValue.AddTicks( -9999999 ) );
+
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0 ).Should().BeTrue();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 7 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 6 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 5 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 4 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 3 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 2 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 1 ).Should().BeFalse();
+                SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 0 ).Should().BeTrue();
+            }
         }
     }
 }
