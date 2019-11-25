@@ -190,7 +190,7 @@ namespace CK.SqlServer
             typeof(object), // SqlDbType.Udt
             typeof(object), // SqlDbType.Structured
             typeof(DateTime), // SqlDbType.Date
-            typeof(DateTime), // SqlDbType.Time
+            typeof(TimeSpan), // SqlDbType.Time
             typeof(DateTime), // SqlDbType.DateTime2
             typeof(DateTimeOffset), // SqlDbType.DateTimeOffset
         };
@@ -246,6 +246,7 @@ namespace CK.SqlServer
                     case SqlDbType.NChar: goto case SqlDbType.NVarChar;
                     case SqlDbType.DateTime: return String.Format( "convert( DateTime, '{0:s}', 126 )", v );
                     case SqlDbType.DateTime2: return String.Format( "'{0:O}'", v );
+                    case SqlDbType.Time: return String.Format( "'{0:c}'", v );
                     case SqlDbType.TinyInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
                     case SqlDbType.UniqueIdentifier: return ((Guid)v).ToString( "B" );
                     case SqlDbType.SmallInt: return Convert.ToString( v, CultureInfo.InvariantCulture );

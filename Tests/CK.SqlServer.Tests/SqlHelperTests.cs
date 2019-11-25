@@ -19,6 +19,7 @@ namespace CK.SqlServer.Tests
         [TestCase( "special:DBNull.Value", SqlDbType.NVarChar, "null" )]
         [TestCase( "special:DateTime", SqlDbType.DateTime, "convert( DateTime, '2016-11-05T20:00:43', 126 )" )]
         [TestCase( "special:DateTime", SqlDbType.DateTime2, "'2016-11-05T20:00:43.0000000'" )]
+        [TestCase( "special:Time", SqlDbType.Time, "'01:02:03.0123456'" )]
         [TestCase( "special:Guid", SqlDbType.UniqueIdentifier, "{63f7ff58-3101-4099-a18f-6d749b1748c8}" )]
         [TestCase( new byte[] { }, SqlDbType.VarBinary, "0x" )]
         [TestCase( new byte[] { 16 }, SqlDbType.VarBinary, "0x10" )]
@@ -32,6 +33,7 @@ namespace CK.SqlServer.Tests
                 if( s == "special:DBNull.Value" ) value = DBNull.Value;
                 if( s == "special:DateTime" ) value = new DateTime( 2016, 11, 5, 20, 0, 43 );
                 if( s == "special:Guid" ) value = g;
+                if( s == "special:Time" ) value = new TimeSpan( 1, 2, 3 ).Add( TimeSpan.FromTicks( 123456 ) );
             }
             Assert.That( SqlHelper.SqlValue( value, dbType ), Is.EqualTo( result ) );
         }
