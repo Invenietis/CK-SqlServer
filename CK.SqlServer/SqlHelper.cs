@@ -9,6 +9,7 @@ using System.IO;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Reflection;
+using CK.Core;
 
 namespace CK.SqlServer
 {
@@ -42,6 +43,52 @@ namespace CK.SqlServer
             {
                 if( value < 0 ) throw new ArgumentOutOfRangeException( "Must be zero or positive.", nameof( CommandTimeoutFactor ) );
                 _timeoutFactor = value;
+            }
+        }
+
+        /// <summary>
+        /// The minimal possible datetime2(n) is the same as the <see cref="Util.UtcMinValue"/> whatever the
+        /// precision is (n being 0 to 7). In sql it is 'convert( datetime2(n), '00010101' )'.
+        /// Things get more complicated for <see cref="IsUtcMaxValue(DateTime)"/>.
+        /// </summary>
+        /// <param name="d">The date time to test.</param>
+        public static bool IsUtcMinValue( DateTime d ) => d == Util.UtcMinValue;
+
+        /// <summary>
+        /// This is the maximal value of a datetime2(0). All other precisions (up to 7) have
+        /// a greater value up to <see cref="Util.UtcMaxValue"/> (for precision 7).
+        /// </summary>
+        public static readonly DateTime UtcMaxValuePrecision0 = Util.UtcMaxValue.AddTicks( -9999999 );
+
+        /// <summary>
+        /// Check whether the date is equal or greater to <see cref="UtcMaxValuePrecision0"/>.
+        /// </summary>
+        /// <param name="d">The date time to test.</param>
+        public static bool IsUtcMaxValue( DateTime d ) => d >= UtcMaxValuePrecision0;
+
+        /// <summary>
+        /// The maximal possible datetime2(n) depends on the precision (that must be between 0 to 7 included).
+        /// The very maximum is <see cref="Util.UtcMaxValue"/> that is 'convert( datetime2(7), '99991231 23:59:59.9999999' )' in sql
+        /// but for the other precision, trailing 9 must be removed up to the precision.
+        /// </summary>
+        /// <param name="d">The date time to test.</param>
+        /// <param name="precision">The precision. Must be between 0 to 7 included.</param>
+        public static bool IsUtcMaxValue( DateTime d, int precision )
+        {
+            if( precision < 0 || precision > 7 ) throw new ArgumentOutOfRangeException( nameof( precision ) );
+            if( d < UtcMaxValuePrecision0 ) return false;
+            switch( precision )
+            {
+                case 0: return d >= UtcMaxValuePrecision0;
+                case 7: return d == Util.UtcMaxValue;
+                case 1: return d >= Util.UtcMaxValue.AddTicks( -999999 );
+                case 2: return d >= Util.UtcMaxValue.AddTicks( -99999 );
+                case 3: return d >= Util.UtcMaxValue.AddTicks( -9999 );
+                case 4: return d >= Util.UtcMaxValue.AddTicks( -999 );
+                case 5: return d >= Util.UtcMaxValue.AddTicks( -99 );
+                default:
+                    Debug.Assert( precision == 6 );
+                    return d >= Util.UtcMaxValue.AddTicks( -9 );
             }
         }
 
@@ -143,7 +190,7 @@ namespace CK.SqlServer
             typeof(object), // SqlDbType.Udt
             typeof(object), // SqlDbType.Structured
             typeof(DateTime), // SqlDbType.Date
-            typeof(DateTime), // SqlDbType.Time
+            typeof(TimeSpan), // SqlDbType.Time
             typeof(DateTime), // SqlDbType.DateTime2
             typeof(DateTimeOffset), // SqlDbType.DateTimeOffset
         };
@@ -199,6 +246,7 @@ namespace CK.SqlServer
                     case SqlDbType.NChar: goto case SqlDbType.NVarChar;
                     case SqlDbType.DateTime: return String.Format( "convert( DateTime, '{0:s}', 126 )", v );
                     case SqlDbType.DateTime2: return String.Format( "'{0:O}'", v );
+                    case SqlDbType.Time: return String.Format( "'{0:c}'", v );
                     case SqlDbType.TinyInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
                     case SqlDbType.UniqueIdentifier: return ((Guid)v).ToString( "B" );
                     case SqlDbType.SmallInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
