@@ -1,9 +1,6 @@
 <RepositoryInfo xmlns="http://csemver.org/schemas/2015">
-  <!-- NetCore2 LTS starts at 0.9.0, so we limit this LTS to patch only. -->
-  <StartingVersionForCSemVer>v0.9.0</StartingVersionForCSemVer>
-  <OnlyPatch>true</OnlyPatch>
   <Branches>
-    <Branch Name="develop-NetCore2" VersionName="develop" CIVersionMode="LastReleaseBased" />
+    <Branch Name="develop" VersionName="develop" CIVersionMode="LastReleaseBased" />
 
   </Branches>
 
