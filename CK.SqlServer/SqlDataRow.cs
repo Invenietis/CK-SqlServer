@@ -11,43 +11,6 @@ using System.Xml;
 namespace CK.SqlServer
 {
 
-    class DataReader : IDisposable
-    {
-        readonly SqlDataReader _r;
-
-        public DataReader( SqlDataReader r )
-        {
-            _r = r;
-        }
-
-        public void Dispose() => ((IDisposable)_r).Dispose();
-
-        public ISqlDataRow Row { get; }
-
-        public bool HasRows { get; }
-
-        public bool NextResult()
-        {
-            return _r.NextResult();
-        }
-
-        public Task<bool> NextResultAsync()
-        {
-            return _r.NextResultAsync();
-        }
-
-        public bool Read()
-        {
-            return _r.Read();
-        }
-
-        public Task<bool> ReadAsync()
-        {
-            return _r.ReadAsync();
-        }
-
-    }
-
     /// <summary>
     /// Minimal wrapper that hides a <see cref="SqlDataReader"/>: only row data can be accessed
     /// through it.
