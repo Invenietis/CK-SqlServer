@@ -108,10 +108,10 @@ namespace CK.SqlServer.Tests
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 directRef = c.Connection;
-                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() ).Should().NotThrow();
+                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
                 c.Connection.State.Should().Be( ConnectionState.Open );
                 c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
-                c.Connection.Awaiting( async oCon => await oCon.OpenAsync() ).Should().NotThrow();
+                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
             directRef.State.Should().Be( ConnectionState.Closed );
