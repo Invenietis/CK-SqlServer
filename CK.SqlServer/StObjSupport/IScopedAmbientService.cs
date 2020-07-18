@@ -9,7 +9,7 @@ namespace CK.SqlServer.StObjSupport
     /// The name of the interface is enough and is defined here because CK.StObj.Model must not
     /// be a dependency of this package.
     /// </summary>
-    public interface IScopedAmbientService
+    public interface IScopedAutoService
     {
     }
 }
