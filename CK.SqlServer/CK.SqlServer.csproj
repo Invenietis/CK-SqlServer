@@ -6,7 +6,7 @@
     </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="13.3.1--0005-develop" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="13.3.1--0006-develop" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.1" />
   </ItemGroup>
   <ItemGroup>
