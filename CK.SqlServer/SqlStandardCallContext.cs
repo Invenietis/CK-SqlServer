@@ -103,7 +103,6 @@ namespace CK.SqlServer
             int _explicitOpenCount;
             int _implicitOpenCount;
             bool _directOpen;
-
             bool _isOpeningOrClosing;
 
             /// <summary>
@@ -117,6 +116,23 @@ namespace CK.SqlServer
                 _connectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
                 _connection.StateChange += OnConnectionStateChange;
+                _connection.InfoMessage += OnConnectionInfoMessafe; 
+            }
+
+            void OnConnectionInfoMessafe( object sender, SqlInfoMessageEventArgs e )
+            {
+                if( SqlHelper.LogSqlServerInfoMessage )
+                {
+                    var messages = e.Errors;
+                    if( messages != null && messages.Count > 0 )
+                    {
+                        using( _ctx.Monitor.TemporarilySetMinimalFilter( LogFilter.Trace ) )
+                        foreach( SqlError m in messages )
+                        {
+                            _ctx.Monitor.Trace( $"Procedure:'{m.Procedure}@{m.LineNumber}', Class: '{m.Class}', , Number: '{m.Number}', Message: '{m.Message}'." );
+                        }
+                    }
+                }
             }
 
             void OnConnectionStateChange( object sender, System.Data.StateChangeEventArgs e )
