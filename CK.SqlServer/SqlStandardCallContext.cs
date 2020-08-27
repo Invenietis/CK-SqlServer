@@ -116,10 +116,10 @@ namespace CK.SqlServer
                 _connectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
                 _connection.StateChange += OnConnectionStateChange;
-                _connection.InfoMessage += OnConnectionInfoMessafe; 
+                _connection.InfoMessage += OnConnectionInfoMessage; 
             }
 
-            void OnConnectionInfoMessafe( object sender, SqlInfoMessageEventArgs e )
+            void OnConnectionInfoMessage( object sender, SqlInfoMessageEventArgs e )
             {
                 if( SqlHelper.LogSqlServerInfoMessage )
                 {
