@@ -47,6 +47,12 @@ namespace CK.SqlServer
         }
 
         /// <summary>
+        /// Gets or sets whether <see cref="SqlConnection.InfoMessage"/> events should be logged into each <see cref="ISqlCallContext.Monitor"/>.
+        /// Default to false.
+        /// </summary>
+        public static bool LogSqlServerInfoMessage { get; set; }
+
+        /// <summary>
         /// The minimal possible datetime2(n) is the same as the <see cref="Util.UtcMinValue"/> whatever the
         /// precision is (n being 0 to 7). In sql it is 'convert( datetime2(n), '00010101' )'.
         /// Things get more complicated for <see cref="IsUtcMaxValue(DateTime)"/>.
