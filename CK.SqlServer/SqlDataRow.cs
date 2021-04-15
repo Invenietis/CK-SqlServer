@@ -271,7 +271,7 @@ namespace CK.SqlServer
         public bool IsDBNull( int i ) => _r.IsDBNull( i );
 
         /// <summary>
-        /// An asynchronous version of System.Data.SqlClient.SqlDataReader.IsDBNull(System.Int32),
+        /// An asynchronous version of <see cref="SqlDataReader.IsDBNull(int)"/>,
         /// which gets a value that indicates whether the column contains non-existent or
         /// missing values. The cancellation token can be used to request that the operation
         /// be abandoned before the command timeout elapses. Exceptions will be reported
