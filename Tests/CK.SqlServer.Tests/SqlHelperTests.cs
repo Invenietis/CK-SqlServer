@@ -108,5 +108,33 @@ namespace CK.SqlServer.Tests
                 SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 0 ).Should().BeTrue();
             }
         }
+
+
+        [Test]
+        public void how_SqlHelper_RemoveSensitiveInformations_works()
+        {
+            // This is what is done: Password and User ID are removed.
+            var s = "Server=.;Database=test;User ID=toto;Password=pwd";
+            var c = new SqlConnectionStringBuilder( s );
+            c["Password"] = null;
+            c["User ID"] = null;
+            c.ToString().Should().Be( "Data Source=.;Initial Catalog=test" );
+
+            // The SqlHelper.RemoveSensitiveInformations( string connectionString ) must be protected.
+            FluentActions.Invoking( () => new SqlConnectionStringBuilder( "something totally fucked." ) ).Should().Throw<ArgumentException>();
+
+
+            SqlHelper.RemoveSensitiveInformations( "Server=14.247.78.98; Pwd=pouf; uid=user; database=mydb" )
+                     .Should().Be( "Data Source=14.247.78.98;Initial Catalog=mydb" );
+
+            SqlHelper.RemoveSensitiveInformations( null )
+                     .Should().StartWith( "ArgumentException: " );
+
+            SqlHelper.RemoveSensitiveInformations( "something totally fucked" )
+                     .Should().StartWith( "ArgumentException: " );
+
+        }
+
     }
+
 }

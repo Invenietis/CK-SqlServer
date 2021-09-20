@@ -21,7 +21,7 @@ namespace CK.SqlServer
     /// <remarks>
     /// <para>
     /// This class directly implements <see cref="ISqlCommandExecutor"/> interface but with explicit methods in
-    /// order to avoid interface pollution. If an executor is provided in the constuctor, the protected <see cref="OnCommandExecuting"/>,
+    /// order to avoid interface pollution. If an executor is provided in the constructor, the protected <see cref="OnCommandExecuting"/>,
     /// <see cref="OnCommandExecuted"/> and <see cref="OnCommandError"/> are no more called: it is up to the provided
     /// executor to fully handle command execution.
     /// </para>
@@ -165,6 +165,10 @@ namespace CK.SqlServer
             /// Note that this is the original string, not the one available on the <see cref="Connection"/> since
             /// they may differ.
             /// </summary>
+            /// <remarks>
+            /// Try to use <see cref="SqlHelper.RemoveSensitiveInformations(string)"/> whenever this must be logged or appear
+            /// in an exception message.
+            /// </remarks>
             public string ConnectionString => _connectionString;
 
             /// <summary>
@@ -196,7 +200,7 @@ namespace CK.SqlServer
                 }
                 catch( Exception ex )
                 {
-                    throw new SqlDetailedException( $"While opening connection to '{ConnectionString}'.", ex );
+                    throw new SqlDetailedException( $"While opening connection to '{SqlHelper.RemoveSensitiveInformations( ConnectionString )}'.", ex );
                 }
                 finally
                 {
@@ -213,7 +217,7 @@ namespace CK.SqlServer
                 }
                 catch( Exception ex )
                 {
-                    throw new SqlDetailedException( $"While opening connection: '{ConnectionString}'.", ex );
+                    throw new SqlDetailedException( $"While opening connection: '{SqlHelper.RemoveSensitiveInformations( ConnectionString )}'.", ex );
                 }
                 finally
                 {
@@ -230,7 +234,7 @@ namespace CK.SqlServer
                 }
                 catch( Exception ex )
                 {
-                    _ctx.Monitor.Warn( $"While closing connection: '{ConnectionString}'.", ex );
+                    _ctx.Monitor.Warn( $"While closing connection: '{SqlHelper.RemoveSensitiveInformations( ConnectionString )}'.", ex );
                     throw;
                 }
                 finally
