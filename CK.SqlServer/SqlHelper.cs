@@ -32,7 +32,7 @@ namespace CK.SqlServer
         /// approach being: the sooner the better.
         /// </para>
         /// <para>
-        /// Right after the instanciation of the command (in any factory method) is the perfect place to apply
+        /// Right after the instantiation of the command (in any factory method) is the perfect place to apply
         /// this factor: this is to avoid multiple application of this factor that won't be easy to track.
         /// </para>
         /// </summary>
@@ -45,6 +45,12 @@ namespace CK.SqlServer
                 _timeoutFactor = value;
             }
         }
+
+        /// <summary>
+        /// Gets or sets whether <see cref="SqlConnection.InfoMessage"/> events should be logged into each <see cref="ISqlCallContext.Monitor"/>.
+        /// Default to false.
+        /// </summary>
+        public static bool LogSqlServerInfoMessage { get; set; }
 
         /// <summary>
         /// The minimal possible datetime2(n) is the same as the <see cref="Util.UtcMinValue"/> whatever the
@@ -157,6 +163,33 @@ namespace CK.SqlServer
             return w;
         }
 
+        /// <summary>
+        /// Uses <see cref="SqlConnectionStringBuilder"/> to remove <see cref="SqlConnectionStringBuilder.UserID"/>
+        /// and <see cref="SqlConnectionStringBuilder.Password"/> from the provided string.
+        /// This never throws: worst case is to return a string with the exception type name followed by the
+        /// exception message.
+        /// </summary>
+        /// <param name="connectionString">The connection string to cleanup.</param>
+        /// <returns>A string that may be an error message.</returns>
+        public static string RemoveSensitiveInformations( string connectionString )
+        {
+            if( string.IsNullOrWhiteSpace( connectionString ) )
+            {
+                return $"ArgumentException: connection string cannot be null or empty.";
+            }
+            try
+            {
+                var c = new SqlConnectionStringBuilder( connectionString );
+                c["Password"] = null;
+                c["User ID"] = null;
+                return c.ToString();
+
+            }
+            catch( Exception ex )
+            {
+                return $"{ex.GetType().Name}: {ex.Message}";
+            }
+        }
 
         static readonly Type[] _typesMap = new Type[] 
         {

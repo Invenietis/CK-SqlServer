@@ -6,15 +6,23 @@
 #endregion
 
 using CK.Core;
+using System;
 using System.Data.SqlClient;
 
 namespace CK.SqlServer
 {
     /// <summary>
+    /// A <see cref="ISqlCallContext"/> is the main <see langword="interface"/> to one or more Sql Server databases: <br/>
+    /// It manages one or more <see cref="SqlConnection"/> (wrapped in <see cref="ISqlConnectionController"/>),
+    /// and provides safe options (like preopening a connection). <br/><br/>
+    /// Note that a <see cref="ISqlCallContext"/> does not implement <see cref="IDisposable"/>,
+    /// it is the object implementing <see cref="ISqlCallContext"/> that may be <see cref="IDisposable"/>: you never have to worry about opening, closing or disposing the connections.
+    /// </summary>
+    /// <remarks>
     /// A ISqlCallContext exposes a <see cref="ISqlCommandExecutor"/>, a <see cref="Monitor"/>
     /// and manages a cache of <see cref="ISqlConnectionController"/> that can be accessed either by
     /// connection string or by <see cref="ISqlConnectionStringProvider"/>.
-    /// </summary>
+    /// </remarks>
     public interface ISqlCallContext : StObjSupport.IScopedAutoService
     {
         /// <summary>
