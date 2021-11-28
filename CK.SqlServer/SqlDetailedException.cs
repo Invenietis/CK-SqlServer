@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 #if NET461
 using System.Runtime.Serialization;
 #endif

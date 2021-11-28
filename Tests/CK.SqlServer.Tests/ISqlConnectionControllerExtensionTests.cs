@@ -2,7 +2,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using System;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
 
@@ -92,16 +92,16 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void using_ISqlConnectionController_extension_methods_async_thows_a_SqlDetailedException()
+        public async Task using_ISqlConnectionController_extension_methods_async_thows_a_SqlDetailedException()
         {
             var bug = new SqlCommand( "bug" );
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
                 var c = ctx[TestHelper.MasterConnectionString];
-                c.Awaiting( co => co.ExecuteNonQueryAsync( bug ) ).Should().Throw<SqlDetailedException>();
-                c.Awaiting( co => co.ExecuteScalarAsync( bug ) ).Should().Throw<SqlDetailedException>();
-                c.Awaiting( co => co.ExecuteSingleRowAsync( bug, r => 0 ) ).Should().Throw<SqlDetailedException>();
-                c.Awaiting( co => co.ExecuteReaderAsync( bug, r => 0 ) ).Should().Throw<SqlDetailedException>();
+                await c.Awaiting( co => co.ExecuteNonQueryAsync( bug ) ).Should().ThrowAsync<SqlDetailedException>();
+                await c.Awaiting( co => co.ExecuteScalarAsync( bug ) ).Should().ThrowAsync<SqlDetailedException>();
+                await c.Awaiting( co => co.ExecuteSingleRowAsync( bug, r => 0 ) ).Should().ThrowAsync<SqlDetailedException>();
+                await c.Awaiting( co => co.ExecuteReaderAsync( bug, r => 0 ) ).Should().ThrowAsync<SqlDetailedException>();
             }
         }
 

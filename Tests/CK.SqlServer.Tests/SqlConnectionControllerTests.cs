@@ -4,7 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
@@ -101,17 +101,17 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void Directly_opening_and_closing_connection_async()
+        public async Task Directly_opening_and_closing_connection_Async()
         {
             SqlConnection directRef;
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 directRef = c.Connection;
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
                 c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
             directRef.State.Should().Be( ConnectionState.Closed );
