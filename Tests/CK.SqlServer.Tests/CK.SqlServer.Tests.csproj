@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CK.SqlServer\CK.SqlServer.csproj" />
-    <PackageReference Include="CK.Testing.SqlServer" Version="0.0.0--03lx5p5-develop" />
+    <PackageReference Include="CK.Testing.SqlServer" Version="0.0.0--03lx6ci-develop" />
     <PackageReference Include="FluentAssertions" Version="6.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.0.0" />
     <PackageReference Include="NUnit" Version="3.13.2" />
