@@ -49,7 +49,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task using_ISqlConnectionController_extension_methods_asynchronous()
+        public async Task using_ISqlConnectionController_extension_methods_asynchronous_Async()
         {
             string tableName = "CK.t" + Guid.NewGuid().ToString( "N" );
             var create = new SqlCommand( $"create table {tableName} ( id int, name varchar(10) ); insert into {tableName}(id,name) values (1,'One'), (2,'Two'), (3,'Three');" );
@@ -92,7 +92,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task using_ISqlConnectionController_extension_methods_async_thows_a_SqlDetailedException()
+        public async Task using_ISqlConnectionController_extension_methods_async_thows_a_SqlDetailedException_Async()
         {
             var bug = new SqlCommand( "bug" );
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
@@ -148,7 +148,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task ExecuteScalarAsync_works_on_closed_or_opened_connection()
+        public async Task ExecuteScalarAsync_works_on_closed_or_opened_connection_Async()
         {
             using( var cmd = new SqlCommand( "select count(*) from sys.objects" ) )
             using( var ctx = new SqlStandardCallContext() )
@@ -180,5 +180,39 @@ namespace CK.SqlServer.Tests
                 c.Connection.State.Should().Be( ConnectionState.Closed );
             }
         }
+
+        [TestCase( "OneRow" )]
+        [TestCase( "NoRow" )]
+        public async Task ExecuteSingleRowAsync_works_on_closed_or_opened_connection_Async( string mode )
+        {
+            using var cmd = new SqlCommand( $"select top({(mode == "OneRow" ? 1 : 0)}) * from sys.objects" );
+
+            using( var ctx = new SqlStandardCallContext() )
+            {
+                ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+                using( await c.ExplicitOpenAsync() )
+                {
+                    c.Connection.State.Should().Be( ConnectionState.Open );
+
+                    int count = await c.ExecuteSingleRowAsync( cmd, r =>
+                    {
+                        if( mode == "NoRow" )
+                        {
+                            r.Should().BeNull();
+                            return 0;
+                        }
+                        else
+                        {
+                            r.Should().NotBeNull();
+                            return 1;
+                        }
+                    } );
+                }
+                c.Connection.State.Should().Be( ConnectionState.Closed );
+            }
+
+        }
+
     }
 }

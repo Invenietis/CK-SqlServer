@@ -123,7 +123,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="i">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        DateTimeOffset GetDateTimeOffset( int i ) => _r.GetDateTimeOffset( i );
+        public DateTimeOffset GetDateTimeOffset( int i ) => _r.GetDateTimeOffset( i );
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="Decimal"/> object.

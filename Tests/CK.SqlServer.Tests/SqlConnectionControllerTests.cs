@@ -46,7 +46,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent()
+        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
@@ -139,7 +139,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_async()
+        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
             {
@@ -199,7 +199,7 @@ namespace CK.SqlServer.Tests
                 try
                 {
                     // If the asynchronous process is lost (if the exception is not correctly managed),
-                    // this test will fail with a task Cancelled exception after:
+                    // this test will fail with a task Canceled exception after:
                     // - 30 second when testing for connection string.... because when trying to resolve a bad server name it takes a loooooooong time.
                     // - 1 second in other cases.
                     CancellationTokenSource source = new CancellationTokenSource();

@@ -35,7 +35,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task SqlConnection_EnsureOpen_extension_asynchronous()
+        public async Task SqlConnection_EnsureOpen_extension_Async()
         {
             using( var oCon = new SqlConnection( TestHelper.GetConnectionString() ) )
             {
