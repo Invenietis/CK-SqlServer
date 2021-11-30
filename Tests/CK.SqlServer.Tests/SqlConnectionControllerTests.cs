@@ -4,7 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
@@ -46,7 +46,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent()
+        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
@@ -101,17 +101,17 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void Directly_opening_and_closing_connection_async()
+        public async Task Directly_opening_and_closing_connection_Async()
         {
             SqlConnection directRef;
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 directRef = c.Connection;
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
                 c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
             directRef.State.Should().Be( ConnectionState.Closed );
@@ -139,7 +139,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_async()
+        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
             {
@@ -199,7 +199,7 @@ namespace CK.SqlServer.Tests
                 try
                 {
                     // If the asynchronous process is lost (if the exception is not correctly managed),
-                    // this test will fail with a task Cancelled exception after:
+                    // this test will fail with a task Canceled exception after:
                     // - 30 second when testing for connection string.... because when trying to resolve a bad server name it takes a loooooooong time.
                     // - 1 second in other cases.
                     CancellationTokenSource source = new CancellationTokenSource();

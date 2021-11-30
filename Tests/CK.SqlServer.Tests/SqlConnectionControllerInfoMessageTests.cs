@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -70,7 +70,7 @@ namespace CK.SqlServer.Tests
             {
             }
 
-            public void OnUnfilteredLog( ActivityMonitorLogData data )
+            public void OnUnfilteredLog( ref ActivityMonitorLogData data )
             {
                 if( data.MaskedLevel == LogLevel.Trace )
                 {

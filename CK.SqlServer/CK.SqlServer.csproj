@@ -1,14 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\Common\Shared.props" />
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <Description>Contains types and helpers that for Sql Server. Main types are: ISqlCallContext, SqlDetailedException, SqlStandardCallContext.
     </Description>
-    <LangVersion>9</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="14.2.1" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="0.0.0--03lvnn5-local+v15.0.0-a01" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="4.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
