@@ -80,7 +80,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task InfoMessage_are_Threadsafe()
+        public async Task InfoMessage_are_Threadsafe_Async()
         {
             SqlHelper.LogSqlServerInfoMessage = true;
 
