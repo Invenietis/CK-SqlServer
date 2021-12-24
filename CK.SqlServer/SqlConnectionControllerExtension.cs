@@ -72,7 +72,7 @@ namespace CK.SqlServer
                                                           CancellationToken cancellationToken = default )
         {
             var ctx = @this.SqlCallContext;
-            using( await @this.ExplicitOpenAsync() )
+            using( await @this.ExplicitOpenAsync( cancellationToken ) )
             {
                 return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor, cancellationToken);
             }
@@ -122,9 +122,9 @@ namespace CK.SqlServer
         public static async Task<int> ExecuteNonQueryAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default )
         {
             var ctx = @this.SqlCallContext;
-            using( await @this.ExplicitOpenAsync() )
+            using( await @this.ExplicitOpenAsync( cancellationToken ) )
             {
-                return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, (c, t) => c.ExecuteNonQueryAsync(t), cancellationToken);
+                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, @this.Transaction, cmd, ( c, t ) => c.ExecuteNonQueryAsync( t ), cancellationToken );
             }
         }
 
@@ -141,7 +141,7 @@ namespace CK.SqlServer
         public static async Task<object?> ExecuteScalarAsync( this ISqlConnectionController @this, SqlCommand cmd, CancellationToken cancellationToken = default )
         {
             var ctx = @this.SqlCallContext;
-            using( await @this.ExplicitOpenAsync() )
+            using( await @this.ExplicitOpenAsync( cancellationToken ) )
             {
                 return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, (c, t) => c.ExecuteScalarAsync(t), cancellationToken);
             }

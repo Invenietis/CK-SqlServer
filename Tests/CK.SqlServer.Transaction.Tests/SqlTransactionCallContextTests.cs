@@ -38,7 +38,7 @@ namespace CK.SqlServer.Transaction.Tests
                 controller.Connection.State.Should().Be( ConnectionState.Closed );
             }
 
-            void BeginTranAndCommit( ISqlConnectionTransactionController controller )
+            static void BeginTranAndCommit( ISqlConnectionTransactionController controller )
             {
                 ISqlTransaction tran = controller.BeginTransaction();
                 controller.Connection.State.Should().Be( ConnectionState.Open );
@@ -188,7 +188,7 @@ namespace CK.SqlServer.Transaction.Tests
         }
 
         [Test]
-        public async Task nested_transaction_with_levels_asynchronous()
+        public async Task nested_transaction_with_levels_asynchronous_Async()
         {
             ResetTranTestTable();
             using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )

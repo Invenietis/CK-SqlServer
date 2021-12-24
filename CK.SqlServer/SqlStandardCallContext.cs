@@ -63,7 +63,7 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the monitor that can be used to log activities.
         /// </summary>
-        public IActivityMonitor Monitor => _monitor ?? (_monitor = new ActivityMonitor());
+        public IActivityMonitor Monitor => _monitor ??= new ActivityMonitor();
 
         ISqlCommandExecutor ISqlCallContext.Executor => _executor;
 
@@ -75,8 +75,7 @@ namespace CK.SqlServer
         {
             if( _cache != null )
             {
-                Controller c = _cache as Controller;
-                if( c != null ) c.DisposeConnection();
+                if( _cache is Controller c ) c.DisposeConnection();
                 else
                 {
                     Controller[] cache = _cache as Controller[];
@@ -298,7 +297,7 @@ namespace CK.SqlServer
             /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
             /// </summary>
             /// <returns>A IDisposable that can be disposed.</returns>
-            public async Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default(CancellationToken) )
+            public async Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default )
             {
                 if( ++_explicitOpenCount == 1 && _implicitOpenCount == 0 && !_directOpen )
                 {
@@ -479,7 +478,7 @@ namespace CK.SqlServer
             T result;
             for(; ; )
             {
-                SqlDetailedException e = null;
+                SqlDetailedException e;
                 try
                 {
                     cmd.Connection = connection;
@@ -519,13 +518,12 @@ namespace CK.SqlServer
             return result;
         }
 
-        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>(
-            IActivityMonitor monitor,
-            SqlConnection connection,
-            SqlTransaction transaction,
-            SqlCommand cmd,
-            Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
-            CancellationToken cancellationToken)
+        async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>( IActivityMonitor monitor,
+                                                                SqlConnection connection,
+                                                                SqlTransaction transaction,
+                                                                SqlCommand cmd,
+                                                                Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
+                                                                CancellationToken cancellationToken )
         {
             Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
@@ -534,7 +532,7 @@ namespace CK.SqlServer
             T result;
             for(; ; )
             {
-                SqlDetailedException e = null;
+                SqlDetailedException e;
                 try
                 {
                     cmd.Connection = connection;
@@ -568,7 +566,7 @@ namespace CK.SqlServer
                     throw e;
                 }
                 previous.Add( e );
-                await Task.Delay( retry ).ConfigureAwait( false );
+                await Task.Delay( retry, cancellationToken ).ConfigureAwait( false );
             }
             OnCommandExecuted( cmd, retryCount, result );
             return result;
