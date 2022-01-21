@@ -35,7 +35,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="this">This connection.</param>
         /// <returns>A IDisposable or null.</returns>
-        public static IDisposable EnsureOpen( this DbConnection @this )
+        public static IDisposable? EnsureOpen( this DbConnection @this )
         {
             if( @this.State == ConnectionState.Closed )
             {
@@ -52,7 +52,7 @@ namespace CK.SqlServer
         /// <param name="this">This connection.</param>
         /// <param name="cancel">Optional cancellation token.</param>
         /// <returns>A IDisposable> or null.</returns>
-        public static async Task<IDisposable> EnsureOpenAsync( this DbConnection @this, CancellationToken cancel = default(CancellationToken) )
+        public static async Task<IDisposable?> EnsureOpenAsync( this DbConnection @this, CancellationToken cancel = default )
         {
             if( @this.State == ConnectionState.Closed )
             {

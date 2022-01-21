@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Microsoft.Data.SqlClient;
-using System.Text;
+using CK.Core;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -51,8 +51,9 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
-                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor);
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor );
             }
         }
 
@@ -73,8 +74,9 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync( cancellationToken ) )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
-                return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor, cancellationToken);
+                return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, @this.Transaction, cmd, innerExecutor, cancellationToken );
             }
         }
 
@@ -88,8 +90,9 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
-                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteNonQuery());
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteNonQuery() );
             }
         }
 
@@ -106,8 +109,9 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( @this.ExplicitOpen() )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
-                return ctx.Executor.ExecuteQuery(ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteScalar());
+                return ctx.Executor.ExecuteQuery( ctx.Monitor, @this.Connection, @this.Transaction, cmd, c => c.ExecuteScalar() );
             }
         }
 
@@ -123,6 +127,7 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync( cancellationToken ) )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
                 return await ctx.Executor.ExecuteQueryAsync( ctx.Monitor, @this.Connection, @this.Transaction, cmd, ( c, t ) => c.ExecuteNonQueryAsync( t ), cancellationToken );
             }
@@ -142,6 +147,7 @@ namespace CK.SqlServer
         {
             var ctx = @this.SqlCallContext;
             using( await @this.ExplicitOpenAsync( cancellationToken ) )
+            using( ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
             {
                 return await ctx.Executor.ExecuteQueryAsync(ctx.Monitor, @this.Connection, @this.Transaction, cmd, (c, t) => c.ExecuteScalarAsync(t), cancellationToken);
             }

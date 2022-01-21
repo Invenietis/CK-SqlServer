@@ -30,7 +30,7 @@ namespace CK.SqlServer
         /// <param name="executor">
         /// Optional command executor to which all command execution will be forwarded.
         /// </param>
-        public SqlTransactionCallContext( IActivityMonitor monitor = null, ISqlCommandExecutor executor = null )
+        public SqlTransactionCallContext( IActivityMonitor? monitor = null, ISqlCommandExecutor? executor = null )
             : base( monitor, executor )
         {
         }
@@ -83,7 +83,7 @@ namespace CK.SqlServer
             {
                 readonly TransactionController _c;
                 readonly SqlTransaction _sqlTransaction;
-                Nested _sub;
+                Nested? _sub;
                 SqlTransactionStatus _status;
 
                 public Primary( TransactionController c, IsolationLevel isolationLevel )
@@ -93,7 +93,7 @@ namespace CK.SqlServer
                     _sqlTransaction = c.Connection.BeginTransaction( isolationLevel );
                 }
 
-                public Nested SubTransaction => _sub;
+                public Nested? SubTransaction => _sub;
 
                 public ISqlConnectionTransactionController ConnectionController => _c;
 
@@ -126,7 +126,7 @@ namespace CK.SqlServer
 
                 public void RollbackAll()
                 {
-                    if( _status != SqlTransactionStatus.Opened ) throw new InvalidOperationException();
+                    Throw.CheckState( _status == SqlTransactionStatus.Opened );
                     if( _sub != null )
                     {
                         _sub.OnRollbackAll();
@@ -157,7 +157,7 @@ namespace CK.SqlServer
             {
                 readonly IInternalTransaction _super;
                 SqlTransactionStatus _status;
-                Nested _sub;
+                Nested? _sub;
 
                 public Nested( IInternalTransaction super, IsolationLevel isolationLevel )
                 {
@@ -166,16 +166,14 @@ namespace CK.SqlServer
                     {
                         if( !SetTransactionLevel( _super.ConnectionController, isolationLevel ) )
                         {
-                            throw new InvalidOperationException( $"Unable to set isolation level: {super.IsolationLevel} => {isolationLevel}." );
+                            Throw.InvalidOperationException( $"Unable to set isolation level: {super.IsolationLevel} => {isolationLevel}." );
                         }
                     }
                 }
 
                 bool RestoreSuperIsolationLevel()
                 {
-                    return IsolationLevel != _super.IsolationLevel
-                            ? SetTransactionLevel( _super.ConnectionController, _super.IsolationLevel )
-                            : true;
+                    return IsolationLevel == _super.IsolationLevel || SetTransactionLevel( _super.ConnectionController, _super.IsolationLevel );
                 }
 
                 public ISqlConnectionTransactionController ConnectionController => _super.ConnectionController;
@@ -220,7 +218,7 @@ namespace CK.SqlServer
                 {
                     if( _status == SqlTransactionStatus.Opened )
                     {
-                        ConnectionController.SqlCallContext.Monitor.Warn( "Uncommitted nor rollbacked transaction. The primary transaction is implicitly rollbacked." );
+                        ConnectionController.SqlCallContext.Monitor.Warn( SqlHelper.Sql, "Uncommitted nor rollbacked transaction. The primary transaction is implicitly rollbacked." );
                         RollbackAll();
                     }
                 }
@@ -252,8 +250,8 @@ namespace CK.SqlServer
 
             }
 
-            Primary _main;
-            IInternalTransaction _current;
+            Primary? _main;
+            IInternalTransaction? _current;
 
             public TransactionController( SqlTransactionCallContext ctx, string connectionString )
                 : base( ctx, connectionString )
@@ -266,17 +264,17 @@ namespace CK.SqlServer
 
             ISqlTransactionCallContext ISqlConnectionTransactionController.SqlCallContext => (ISqlTransactionCallContext)base.SqlCallContext;
 
-            public override SqlTransaction Transaction => _main?.SqlTransaction;
+            public override SqlTransaction? Transaction => _main?.SqlTransaction;
 
             public void Commit()
             {
-                if( _current == null ) throw new InvalidOperationException();
+                Throw.CheckState( "No transaction opened.", _current != null );
                 _current.Commit();
             }
 
             public void RollbackAll()
             {
-                if( _main == null ) throw new InvalidOperationException();
+                Throw.CheckState( "No transaction opened.", _main != null );
                 _main.RollbackAll();
             }
 
@@ -307,6 +305,7 @@ namespace CK.SqlServer
                 }
                 else
                 {
+                    Debug.Assert( _current != null );
                     _current = _current.CreateSub( isolationLevel );
                 }
                 return _current;

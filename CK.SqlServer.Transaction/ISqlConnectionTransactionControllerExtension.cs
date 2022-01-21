@@ -64,7 +64,7 @@ FROM sys.dm_exec_sessions AS s CROSS JOIN sys.databases AS d WHERE  session_id =
             }
         }
 
-        static IsolationLevel Parse( string s )
+        static IsolationLevel Parse( string? s )
         {
             return s switch
             {

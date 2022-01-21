@@ -66,7 +66,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connection">The connection instance.</param>
         /// <returns>Null or the controller associated to the connection instance.</returns>
-        ISqlConnectionController FindController( SqlConnection connection );
+        ISqlConnectionController? FindController( SqlConnection connection );
 
     }
 }

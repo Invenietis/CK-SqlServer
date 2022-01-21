@@ -32,9 +32,9 @@ namespace CK.SqlServer
     /// </remarks>
     public class SqlStandardCallContext : IDisposableSqlCallContext, ISqlCommandExecutor
     {
-        object _cache;
+        object? _cache;
         readonly ISqlCommandExecutor _executor;
-        IActivityMonitor _monitor;
+        IActivityMonitor? _monitor;
         readonly bool _ownedMonitor;
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace CK.SqlServer
         /// <param name="executor">
         /// Optional command executor to which all command execution will be forwarded.
         /// </param>
-        public SqlStandardCallContext( IActivityMonitor monitor = null, ISqlCommandExecutor executor = null )
+        public SqlStandardCallContext( IActivityMonitor? monitor = null, ISqlCommandExecutor? executor = null )
         {
             _ownedMonitor = monitor == null;
             _monitor = monitor;
@@ -63,7 +63,7 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the monitor that can be used to log activities.
         /// </summary>
-        public IActivityMonitor Monitor => _monitor ??= new ActivityMonitor();
+        public IActivityMonitor Monitor => _monitor ??= new ActivityMonitor( GetType().Name );
 
         ISqlCommandExecutor ISqlCallContext.Executor => _executor;
 
@@ -78,7 +78,7 @@ namespace CK.SqlServer
                 if( _cache is Controller c ) c.DisposeConnection();
                 else
                 {
-                    Controller[] cache = _cache as Controller[];
+                    Controller[] cache = (Controller[])_cache;
                     for( int i = 0; i < cache.Length; ++i ) cache[i].DisposeConnection();
                 }
                 _cache = null;
@@ -111,6 +111,8 @@ namespace CK.SqlServer
             /// <param name="connectionString">The connection string.</param>
             public Controller( SqlStandardCallContext ctx, string connectionString )
             {
+                Throw.CheckNotNullArgument( ctx );
+                Throw.CheckNotNullOrWhiteSpaceArgument( connectionString );
                 _ctx = ctx;
                 _connectionString = connectionString;
                 _connection = new SqlConnection( connectionString );
@@ -126,7 +128,8 @@ namespace CK.SqlServer
                     if( messages != null && messages.Count > 0 )
                     {
                         using( _ctx.Monitor.TemporarilySetMinimalFilter( LogFilter.Trace ) )
-                        foreach( SqlError m in messages )
+                        using( _ctx.Monitor.TemporarilySetAutoTags( SqlHelper.Sql ) )
+                            foreach( SqlError m in messages )
                         {
                             _ctx.Monitor.Trace( $"Procedure:'{m.Procedure}@{m.LineNumber}', Class: '{m.Class}', , Number: '{m.Number}', Message: '{m.Message}'." );
                         }
@@ -152,7 +155,7 @@ namespace CK.SqlServer
                     {
                         if( !_directOpen )
                         {
-                            throw new InvalidOperationException( "Direct SqlConnection.Close() is allowed only if it was Open() or OpenAsync() directly." );
+                            Throw.InvalidOperationException( "Direct SqlConnection.Close() is allowed only if it was Open() or OpenAsync() directly." );
                         }
                         _directOpen = false;
                     }
@@ -178,7 +181,7 @@ namespace CK.SqlServer
             /// <summary>
             /// Gets a null transaction since at this level, transactions are not managed.  
             /// </summary>
-            public virtual SqlTransaction Transaction => null;
+            public virtual SqlTransaction? Transaction => null;
 
             /// <summary>
             /// Gets the context that contains this controller.
@@ -233,7 +236,7 @@ namespace CK.SqlServer
                 }
                 catch( Exception ex )
                 {
-                    _ctx.Monitor.Warn( $"While closing connection: '{SqlHelper.RemoveSensitiveInformations( ConnectionString )}'.", ex );
+                    _ctx.Monitor.Warn( SqlHelper.Sql, $"While closing connection: '{SqlHelper.RemoveSensitiveInformations( ConnectionString )}'.", ex );
                     throw;
                 }
                 finally
@@ -255,7 +258,7 @@ namespace CK.SqlServer
 
             sealed class AutoCloser : IDisposable
             {
-                Controller _c;
+                Controller? _c;
 
                 public AutoCloser( Controller c )
                 {
@@ -318,7 +321,7 @@ namespace CK.SqlServer
 
             /// <summary>
             /// Reserved for specialization.
-            /// A secondary copunter is used for implicit open/close.
+            /// A secondary counter is used for implicit open/close.
             /// </summary>
             protected void ImplicitClose()
             {
@@ -333,7 +336,7 @@ namespace CK.SqlServer
 
             /// <summary>
             /// Reserved for specialization.
-            /// A secondary copunter is used for implicit open/close.
+            /// A secondary counter is used for implicit open/close.
             /// </summary>
             protected void ImplicitOpen()
             {
@@ -345,7 +348,7 @@ namespace CK.SqlServer
 
             /// <summary>
             /// Reserved for specialization.
-            /// A secondary copunter is used for implicit open/close.
+            /// A secondary counter is used for implicit open/close.
             /// </summary>
             protected Task ImplicitOpenAsync( CancellationToken cancellationToken )
             {
@@ -373,7 +376,7 @@ namespace CK.SqlServer
         /// <returns>The typed controller.</returns>
         protected Controller GetController( string connectionString )
         {
-            Controller c;
+            Controller? c;
             if( _cache == null )
             {
                 c = CreateController( connectionString );
@@ -411,8 +414,9 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connection">The connection instance.</param>
         /// <returns>Null or the controller associated to the connection instance.</returns>
-        public ISqlConnectionController FindController( SqlConnection connection )
+        public ISqlConnectionController? FindController( SqlConnection connection )
         {
+            if( _cache == null ) return null;
             if( _cache is Controller controller ) return controller.Connection == connection ? controller : null;
             var cache = (Controller[])_cache;
             foreach( var c in cache )
@@ -464,63 +468,65 @@ namespace CK.SqlServer
         /// <returns>The connection controller to use.</returns>
         public ISqlConnectionController GetConnectionController( ISqlConnectionStringProvider provider ) => GetController( provider.ConnectionString );
 
-        T ISqlCommandExecutor.ExecuteQuery<T>(
-            IActivityMonitor monitor,
-            SqlConnection connection,
-            SqlTransaction transaction,
-            SqlCommand cmd,
-            Func<SqlCommand, T> innerExecutor)
+        T ISqlCommandExecutor.ExecuteQuery<T>( IActivityMonitor monitor,
+                                               SqlConnection connection,
+                                               SqlTransaction? transaction,
+                                               SqlCommand cmd,
+                                               Func<SqlCommand, T> innerExecutor )
         {
             Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
-            List<SqlDetailedException> previous = null;
+            List<SqlDetailedException>? previous = null;
             T result;
-            for(; ; )
+            using( monitor.OpenDebug( $"Sync execution of {SqlHelper.CommandAsText( cmd )}." ) )
             {
-                SqlDetailedException e;
-                try
+                for(; ; )
                 {
-                    cmd.Connection = connection;
-                    cmd.Transaction = transaction;
-                    OnCommandExecuting( cmd, retryCount );
+                    SqlDetailedException e;
+                    try
+                    {
+                        cmd.Connection = connection;
+                        cmd.Transaction = transaction;
+                        OnCommandExecuting( cmd, retryCount );
 
-                    result = innerExecutor( cmd );
-                    break;
+                        result = innerExecutor( cmd );
+                        break;
+                    }
+                    catch( IOException ex )
+                    {
+                        e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                    }
+                    catch( SqlException ex )
+                    {
+                        e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                    }
+                    catch( Exception ex )
+                    {
+                        Monitor.Fatal( ex );
+                        throw;
+                    }
+                    Debug.Assert( e != null );
+                    Monitor.Error( e );
+                    if( previous == null ) previous = new List<SqlDetailedException>();
+                    TimeSpan retry = OnCommandError( cmd, e, previous, start );
+                    if( retry < TimeSpan.Zero
+                        || retry == TimeSpan.MaxValue
+                        || previous.Count > 1000 )
+                    {
+                        throw e;
+                    }
+                    previous.Add( e );
+                    Thread.Sleep( retry );
                 }
-                catch( IOException ex )
-                {
-                    e = SqlDetailedException.Create( cmd, ex, retryCount++ );
-                }
-                catch( SqlException ex )
-                {
-                    e = SqlDetailedException.Create( cmd, ex, retryCount++ );
-                }
-                catch( Exception ex )
-                {
-                    Monitor.Fatal( ex );
-                    throw;
-                }
-                Debug.Assert( e != null );
-                Monitor.Error( e );
-                if( previous == null ) previous = new List<SqlDetailedException>();
-                TimeSpan retry = OnCommandError( cmd, connection, e, previous, start );
-                if( retry.Ticks < 0
-                    || retry == TimeSpan.MaxValue
-                    || previous.Count > 1000 )
-                {
-                    throw e;
-                }
-                previous.Add( e );
-                Thread.Sleep( retry );
+                OnCommandExecuted( cmd, retryCount, result );
             }
-            OnCommandExecuted( cmd, retryCount, result );
             return result;
         }
 
         async Task<T> ISqlCommandExecutor.ExecuteQueryAsync<T>( IActivityMonitor monitor,
                                                                 SqlConnection connection,
-                                                                SqlTransaction transaction,
+                                                                SqlTransaction? transaction,
                                                                 SqlCommand cmd,
                                                                 Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
                                                                 CancellationToken cancellationToken )
@@ -528,52 +534,56 @@ namespace CK.SqlServer
             Debug.Assert( connection != null && connection.State == System.Data.ConnectionState.Open );
             DateTime start = DateTime.UtcNow;
             int retryCount = 0;
-            List<SqlDetailedException> previous = null;
+            List<SqlDetailedException>? previous = null;
             T result;
-            for(; ; )
+            using( monitor.OpenDebug( $"Async execution of {SqlHelper.CommandAsText( cmd )}." ) )
             {
-                SqlDetailedException e;
-                try
+                for(; ; )
                 {
-                    cmd.Connection = connection;
-                    cmd.Transaction = transaction;
-                    OnCommandExecuting( cmd, retryCount );
+                    SqlDetailedException e;
+                    try
+                    {
+                        cmd.Connection = connection;
+                        cmd.Transaction = transaction;
+                        OnCommandExecuting( cmd, retryCount );
 
-                    result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
-                    break;
+                        result = await innerExecutor( cmd, cancellationToken ).ConfigureAwait( false );
+                        break;
+                    }
+                    catch( IOException ex )
+                    {
+                        e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                    }
+                    catch( SqlException ex )
+                    {
+                        e = SqlDetailedException.Create( cmd, ex, retryCount++ );
+                    }
+                    catch( Exception ex )
+                    {
+                        Monitor.Fatal( ex );
+                        throw;
+                    }
+                    Debug.Assert( e != null );
+                    Monitor.Error( e );
+                    if( previous == null ) previous = new List<SqlDetailedException>();
+                    TimeSpan retry = OnCommandError( cmd, e, previous, start );
+                    if( retry.Ticks < 0
+                        || retry == TimeSpan.MaxValue
+                        || previous.Count > 1000 )
+                    {
+                        throw e;
+                    }
+                    previous.Add( e );
+                    await Task.Delay( retry, cancellationToken ).ConfigureAwait( false );
                 }
-                catch( IOException ex )
-                {
-                    e = SqlDetailedException.Create( cmd, ex, retryCount++ );
-                }
-                catch( SqlException ex )
-                {
-                    e = SqlDetailedException.Create( cmd, ex, retryCount++ );
-                }
-                catch( Exception ex )
-                {
-                    Monitor.Fatal( ex );
-                    throw;
-                }
-                Debug.Assert( e != null );
-                Monitor.Error( e );
-                if( previous == null ) previous = new List<SqlDetailedException>();
-                TimeSpan retry = OnCommandError( cmd, connection, e, previous, start );
-                if( retry.Ticks < 0
-                    || retry == TimeSpan.MaxValue
-                    || previous.Count > 1000 )
-                {
-                    throw e;
-                }
-                previous.Add( e );
-                await Task.Delay( retry, cancellationToken ).ConfigureAwait( false );
+                OnCommandExecuted( cmd, retryCount, result );
             }
-            OnCommandExecuted( cmd, retryCount, result );
             return result;
         }
 
         /// <summary>
         /// Extension point called before a command is executed.
+        /// Does nothing at this level.
         /// </summary>
         /// <param name="cmd">The command that is ready to be executed.</param>
         /// <param name="retryNumber">Current number of retries (0 the first time).</param>
@@ -581,6 +591,7 @@ namespace CK.SqlServer
 
         /// <summary>
         /// Extension point called after a command has been successfully executed.
+        /// Does nothing at this level.
         /// </summary>
         /// <param name="cmd">The executed command.</param>
         /// <param name="retryCount">Number of tries before success.</param>
@@ -589,7 +600,7 @@ namespace CK.SqlServer
         /// or the result of the <see cref="SqlCommand.ExecuteScalar"/>, or any result object built
         /// by a more complex function.
         /// </param>
-        protected virtual void OnCommandExecuted( SqlCommand cmd, int retryCount, object result ) { }
+        protected virtual void OnCommandExecuted( SqlCommand cmd, int retryCount, object? result ) { }
 
         /// <summary>
         /// Extension point called after a command failed.
@@ -599,18 +610,18 @@ namespace CK.SqlServer
         /// the <see cref="SqlDetailedException"/> being thrown.
         /// </para>
         /// </summary>
-        /// <param name="cmd">The executing command.</param>
-        /// <param name="c">The connection.</param>
+        /// <param name="cmd">
+        /// The executing command. <see cref="SqlCommand.Connection"/> contains the current connection
+        /// and <see cref="SqlCommand.Transaction"/> (that can be null) the current transaction if any.
+        /// </param>
         /// <param name="ex">The exception caught and wrapped in a <see cref="SqlDetailedException"/>.</param>
         /// <param name="previous">Previous errors when retries have been made. Empty on the first error.</param>
         /// <param name="firstExecutionTimeUtc">The Utc time of the first try.</param>
         /// <returns>The time span to retry. A negative time span or <see cref="TimeSpan.MaxValue"/> to skip retry.</returns>
-        protected virtual TimeSpan OnCommandError(
-            SqlCommand cmd,
-            SqlConnection c,
-            SqlDetailedException ex,
-            IReadOnlyList<SqlDetailedException> previous,
-            DateTime firstExecutionTimeUtc ) => TimeSpan.MaxValue;
+        protected virtual TimeSpan OnCommandError( SqlCommand cmd,
+                                                   SqlDetailedException ex,
+                                                   IReadOnlyList<SqlDetailedException> previous,
+                                                   DateTime firstExecutionTimeUtc ) => TimeSpan.MaxValue;
 
     }
 

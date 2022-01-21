@@ -17,17 +17,17 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="this">This level.</param>
         /// <returns>The Sql Server level name.</returns>
-        public static string ToSqlString( this IsolationLevel @this )
+        public static string? ToSqlString( this IsolationLevel @this )
         {
-            switch( @this )
+            return @this switch
             {
-                case IsolationLevel.ReadUncommitted: return "READ UNCOMMITTED";
-                case IsolationLevel.ReadCommitted: return "READ COMMITTED";
-                case IsolationLevel.RepeatableRead: return "REPEATABLE READ";
-                case IsolationLevel.Snapshot: return "SNAPSHOT";
-                case IsolationLevel.Serializable: return "SERIALIZABLE";
-            }
-            return null;
+                IsolationLevel.ReadUncommitted => "READ UNCOMMITTED",
+                IsolationLevel.ReadCommitted => "READ COMMITTED",
+                IsolationLevel.RepeatableRead => "REPEATABLE READ",
+                IsolationLevel.Snapshot => "SNAPSHOT",
+                IsolationLevel.Serializable => "SERIALIZABLE",
+                _ => null,
+            };
         }
 
     }
