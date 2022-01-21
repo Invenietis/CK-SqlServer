@@ -212,7 +212,7 @@ namespace CK.SqlServer.Tests
                     await con.ExecuteNonQueryAsync( command, source.Token );
                     Assert.Fail( $"Should have raised {typeof(TException).Name}." );
                 }
-                catch( TException ex )
+                catch( TException )
                 {
                 }
             }

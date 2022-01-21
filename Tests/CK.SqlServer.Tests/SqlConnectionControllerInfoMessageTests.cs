@@ -33,7 +33,6 @@ namespace CK.SqlServer.Tests
             // Even if the monitor should not catch them, info messages traces will be emitted.
             m.MinimalFilter = LogFilter.Release;
             using( m.CollectEntries( logs => entries = logs, LogLevelFilter.Debug ) )
-            using( m.Output.CreateBridgeTo( TestHelper.Monitor.Output.BridgeTarget ) )
             using( var ctx = new SqlStandardCallContext( m ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
