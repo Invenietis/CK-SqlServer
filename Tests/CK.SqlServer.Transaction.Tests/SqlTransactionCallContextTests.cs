@@ -60,7 +60,7 @@ namespace CK.SqlServer.Transaction.Tests
                 var messageId = DoCommitTest( controller, 0, 0 );
                 messageId.Should().Be( 1, "One message has been created." );
                 messageId = DoRollbackAllAndDisposeTest( controller, 0, messageId );
-                messageId.Should().Be( 3, "Two messages have been created and cancelled." );
+                messageId.Should().Be( 3, "Two messages have been created and canceled." );
             }
         }
 
