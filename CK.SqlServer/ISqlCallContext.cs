@@ -1,20 +1,13 @@
-#region Proprietary License
-/*----------------------------------------------------------------------------
-* This file (CK.SqlServer.Setup.Model\ISqlCallContext.cs) is part of CK-Database. 
-* Copyright © 2007-2014, Invenietis <http://www.invenietis.com>. All rights reserved. 
-*-----------------------------------------------------------------------------*/
-#endregion
-
 using CK.Core;
 using System;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace CK.SqlServer
 {
     /// <summary>
     /// A <see cref="ISqlCallContext"/> is the main <see langword="interface"/> to one or more Sql Server databases: <br/>
     /// It manages one or more <see cref="SqlConnection"/> (wrapped in <see cref="ISqlConnectionController"/>),
-    /// and provides safe options (like preopening a connection). <br/><br/>
+    /// and provides safe options (like pre opening a connection). <br/><br/>
     /// Note that a <see cref="ISqlCallContext"/> does not implement <see cref="IDisposable"/>,
     /// it is the object implementing <see cref="ISqlCallContext"/> that may be <see cref="IDisposable"/>: you never have to worry about opening, closing or disposing the connections.
     /// </summary>
@@ -23,7 +16,7 @@ namespace CK.SqlServer
     /// and manages a cache of <see cref="ISqlConnectionController"/> that can be accessed either by
     /// connection string or by <see cref="ISqlConnectionStringProvider"/>.
     /// </remarks>
-    public interface ISqlCallContext : StObjSupport.IScopedAutoService
+    public interface ISqlCallContext : IScopedAutoService
     {
         /// <summary>
         /// Gets the <see cref="ISqlCommandExecutor"/> that must be used to call databases.
@@ -73,7 +66,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="connection">The connection instance.</param>
         /// <returns>Null or the controller associated to the connection instance.</returns>
-        ISqlConnectionController FindController( SqlConnection connection );
+        ISqlConnectionController? FindController( SqlConnection connection );
 
     }
 }

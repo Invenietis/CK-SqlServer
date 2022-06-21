@@ -3,7 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,7 +38,7 @@ namespace CK.SqlServer.Transaction.Tests
                 controller.Connection.State.Should().Be( ConnectionState.Closed );
             }
 
-            void BeginTranAndCommit( ISqlConnectionTransactionController controller )
+            static void BeginTranAndCommit( ISqlConnectionTransactionController controller )
             {
                 ISqlTransaction tran = controller.BeginTransaction();
                 controller.Connection.State.Should().Be( ConnectionState.Open );
@@ -60,7 +60,7 @@ namespace CK.SqlServer.Transaction.Tests
                 var messageId = DoCommitTest( controller, 0, 0 );
                 messageId.Should().Be( 1, "One message has been created." );
                 messageId = DoRollbackAllAndDisposeTest( controller, 0, messageId );
-                messageId.Should().Be( 3, "Two messages have been created and cancelled." );
+                messageId.Should().Be( 3, "Two messages have been created and canceled." );
             }
         }
 
@@ -188,7 +188,7 @@ namespace CK.SqlServer.Transaction.Tests
         }
 
         [Test]
-        public async Task nested_transaction_with_levels_asynchronous()
+        public async Task nested_transaction_with_levels_asynchronous_Async()
         {
             ResetTranTestTable();
             using( var ctx = new SqlTransactionCallContext( TestHelper.Monitor ) )

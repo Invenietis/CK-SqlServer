@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -18,6 +18,11 @@ namespace CK.SqlServer
     /// </summary>
     public static class SqlHelper
     {
+        /// <summary>
+        /// The "Sql" tag.
+        /// </summary>
+        public static readonly CKTrait Sql = ActivityMonitor.Tags.Register( "Sql" );
+
         static double _timeoutFactor = 1.0;
 
         /// <summary>
@@ -191,7 +196,7 @@ namespace CK.SqlServer
             }
         }
 
-        static readonly Type[] _typesMap = new Type[] 
+        static readonly Type?[] _typesMap = new Type?[] 
         {
             typeof(long), // SqlDbType.BigInt
             typeof(byte[]), // SqlDbType.Binary
@@ -233,7 +238,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="tSql">Sql type.</param>
         /// <returns>.net type to consider.</returns>
-        static public Type FromSqlDbTypeToNetType( SqlDbType tSql )
+        static public Type? FromSqlDbTypeToNetType( SqlDbType tSql )
         {
             Debug.Assert( _typesMap.Length == 35 );
             return _typesMap[(int)tSql];
@@ -255,7 +260,7 @@ namespace CK.SqlServer
         static public readonly string SqlValueError = "<Unable to convert as string>";
 
         /// <summary>
-        /// Express a value of a given <see cref="SqlDbType"/> into a syntaxically compatible string. 
+        /// Express a value of a given <see cref="SqlDbType"/> into a syntactically compatible string. 
         /// </summary>
         /// <param name="v">Object for which a string representation must be obtained.</param>
         /// <param name="dbType">Sql type.</param>
@@ -271,32 +276,31 @@ namespace CK.SqlServer
             {
                 switch( dbType )
                 {
-                    case SqlDbType.NVarChar: return String.Format( "N'{0}'", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture ) ) );
-                    case SqlDbType.Int: return Convert.ToString( v, CultureInfo.InvariantCulture );
+                    case SqlDbType.NVarChar: return String.Format( "N'{0}'", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture )! ) );
+                    case SqlDbType.Int: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
                     case SqlDbType.Bit: return Convert.ToBoolean( v ) ? "1" : "0";
                     case SqlDbType.Char: goto case SqlDbType.VarChar;
-                    case SqlDbType.VarChar: return String.Format( "'{0}'", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture ) ) );
+                    case SqlDbType.VarChar: return String.Format( "'{0}'", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture )! ) );
                     case SqlDbType.NChar: goto case SqlDbType.NVarChar;
                     case SqlDbType.DateTime: return String.Format( "convert( DateTime, '{0:s}', 126 )", v );
                     case SqlDbType.DateTime2: return String.Format( "'{0:O}'", v );
                     case SqlDbType.Time: return String.Format( "'{0:c}'", v );
-                    case SqlDbType.TinyInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
+                    case SqlDbType.TinyInt: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
                     case SqlDbType.UniqueIdentifier: return ((Guid)v).ToString( "B" );
-                    case SqlDbType.SmallInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
+                    case SqlDbType.SmallInt: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
                     case SqlDbType.SmallDateTime: return String.Format( "convert( SmallDateTime, '{0:s}', 126 )", v );
-                    case SqlDbType.BigInt: return Convert.ToString( v, CultureInfo.InvariantCulture );
+                    case SqlDbType.BigInt: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
                     case SqlDbType.NText: goto case SqlDbType.NVarChar;
-                    case SqlDbType.Float: return Convert.ToString( v, CultureInfo.InvariantCulture );
-                    case SqlDbType.Real: return Convert.ToString( v, CultureInfo.InvariantCulture );
-                    case SqlDbType.Money: return Convert.ToString( v, CultureInfo.InvariantCulture );
-                    case SqlDbType.Decimal: return Convert.ToString( v, CultureInfo.InvariantCulture );
-                    case SqlDbType.Xml: return string.Format( "cast( '{0}' as xml )", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture ) ) );
-                    case SqlDbType.Structured: return Convert.ToString( v, CultureInfo.InvariantCulture );
+                    case SqlDbType.Float: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
+                    case SqlDbType.Real: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
+                    case SqlDbType.Money: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
+                    case SqlDbType.Decimal: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
+                    case SqlDbType.Xml: return string.Format( "cast( '{0}' as xml )", SqlEncodeStringContent( Convert.ToString( v, CultureInfo.InvariantCulture )! ) );
+                    case SqlDbType.Structured: return Convert.ToString( v, CultureInfo.InvariantCulture )!;
                     case SqlDbType.Binary:
                     case SqlDbType.VarBinary:
                         {
-                            byte[] bytes = v as byte[];
-                            if( bytes == null )
+                            if( v is not byte[] bytes )
                             {
                                 if( throwError ) throw new Exception( $"Unable to convert '{v.GetType()}' to byte[] to compute sql string representation for {dbType}." );
                                 return SqlValueError;
@@ -338,16 +342,16 @@ namespace CK.SqlServer
         /// </remarks>
         static public bool IsArrayType( SqlDbType dbType )
         {
-            switch( dbType )
+            return dbType switch
             {
-                case SqlDbType.NVarChar: return true;
-                case SqlDbType.VarChar: return true;
-                case SqlDbType.Char: return true;
-                case SqlDbType.NChar: return true;
-                case SqlDbType.Binary: return true;
-                case SqlDbType.VarBinary: return true;
-                default: return false;
-            }
+                SqlDbType.NVarChar => true,
+                SqlDbType.VarChar => true,
+                SqlDbType.Char => true,
+                SqlDbType.NChar => true,
+                SqlDbType.Binary => true,
+                SqlDbType.VarBinary => true,
+                _ => false,
+            };
         }
 
         /// <summary>

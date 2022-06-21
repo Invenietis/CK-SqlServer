@@ -4,7 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
@@ -46,7 +46,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent()
+        public async Task ExplicitOpenAsync_and_Dispose_are_order_independent_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
@@ -72,7 +72,7 @@ namespace CK.SqlServer.Tests
         [Test]
         public void Direct_open_close_of_the_connection_is_possible()
         {
-            void DoSomething( SqlConnection con )
+            static void DoSomething( SqlConnection con )
             {
                 bool wasClosed = con.State == ConnectionState.Closed;
                 if( wasClosed ) con.Open();
@@ -101,17 +101,17 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void Directly_opening_and_closing_connection_async()
+        public async Task Directly_opening_and_closing_connection_Async()
         {
             SqlConnection directRef;
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
                 directRef = c.Connection;
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
                 c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
-                c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrow();
+                await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
                 c.Connection.State.Should().Be( ConnectionState.Open );
             }
             directRef.State.Should().Be( ConnectionState.Closed );
@@ -125,21 +125,26 @@ namespace CK.SqlServer.Tests
                 connection.Should().NotBeNull();
                 transaction.Should().BeNull( "We don't have transaction here." );
                 cmd.CommandText.Should().Be( "some text" );
-                return default( T );
+                return default;
             }
 
-            public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken = default( CancellationToken ) )
+            public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor,
+                                                 SqlConnection connection,
+                                                 SqlTransaction transaction,
+                                                 SqlCommand cmd,
+                                                 Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
+                                                 CancellationToken cancellationToken = default )
             {
                 monitor.Should().BeSameAs( TestHelper.Monitor );
                 connection.Should().NotBeNull();
                 transaction.Should().BeNull( "We don't have transaction here." );
                 cmd.CommandText.Should().Be( "some text" );
-                return Task.FromResult( default( T ) );
+                return Task.FromResult<T>( default );
             }
         }
 
         [Test]
-        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_async()
+        public async Task external_executor_receives_correctly_configured_command_and_opened_connection_Async()
         {
             using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
             {
@@ -159,9 +164,9 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void exec_SqlCommand_throws_a_SqlDetailedException_when_a_SqlException_is_thrown_async()
+        public Task exec_SqlCommand_throws_a_SqlDetailedException_when_a_SqlException_is_thrown_Async()
         {
-            AsyncCallCatch<SqlDetailedException>( "select * from kexistepas;" );
+            return CallCatchAsync<SqlDetailedException>( "select * from kexistepas;" );
         }
 
         [Test]
@@ -171,9 +176,9 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public void exec_throws_SqlDetailedException_when_database_does_not_exist_async()
+        public Task exec_throws_SqlDetailedException_when_database_does_not_exist_Async()
         {
-            AsyncCallCatch<SqlDetailedException>( "select 1;", TestHelper.GetConnectionString( "kexistepas-db" ) );
+            return CallCatchAsync<SqlDetailedException>( "select 1;", TestHelper.GetConnectionString( "kexistepas-db" ) );
         }
 
         [Test]
@@ -184,13 +189,13 @@ namespace CK.SqlServer.Tests
 
         [Test]
         [Explicit( "When trying to resolve a bad server name it takes a loooooooong time." )]
-        public void exec_throws_SqlDetailedException_when_server_does_not_exist()
+        public async Task exec_throws_SqlDetailedException_when_server_does_not_exist_Async()
         {
            Assume.That( TestHelper.IsExplicitAllowed, "Press Ctrl key to allow this test to run." );
-           AsyncCallCatch<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
+           await CallCatchAsync<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
         }
 
-        void AsyncCallCatch<TException>( string cmd, string connectionString = null )
+        static async Task CallCatchAsync<TException>( string cmd, string connectionString = null ) where TException : Exception
         {
             using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
             using( var command = new SqlCommand( cmd ) )
@@ -199,22 +204,21 @@ namespace CK.SqlServer.Tests
                 try
                 {
                     // If the asynchronous process is lost (if the exception is not correctly managed),
-                    // this test will fail with a task Cancelled exception after:
+                    // this test will fail with a task Canceled exception after:
                     // - 30 second when testing for connection string.... because when trying to resolve a bad server name it takes a loooooooong time.
                     // - 1 second in other cases.
                     CancellationTokenSource source = new CancellationTokenSource();
                     source.CancelAfter( connectionString == null ? 1000 : 30 * 1000 );
-                    con.ExecuteNonQueryAsync( command, source.Token )
-                        .Wait();
+                    await con.ExecuteNonQueryAsync( command, source.Token );
+                    Assert.Fail( $"Should have raised {typeof(TException).Name}." );
                 }
-                catch( AggregateException ex )
+                catch( TException )
                 {
-                    Assert.That( ex.GetBaseException(), Is.InstanceOf<TException>() );
                 }
             }
         }
 
-        void SyncCallCatch<TException>( string cmd, string connectionString = null )
+        static void SyncCallCatch<TException>( string cmd, string connectionString = null )
         {
             using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
             using( var command = new SqlCommand( cmd ) )
@@ -223,6 +227,7 @@ namespace CK.SqlServer.Tests
                 try
                 {
                     con.ExecuteNonQuery( command );
+                    Assert.Fail( $"Should have raised {typeof(TException).Name}." );
                 }
                 catch( Exception ex )
                 {

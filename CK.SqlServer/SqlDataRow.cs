@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using CK.Core;
 
 namespace CK.SqlServer
 {
@@ -26,7 +27,7 @@ namespace CK.SqlServer
         /// <param name="reader">The reader (can not be null).</param>
         public SqlDataRow( SqlDataReader reader )
         {
-            if( reader == null ) throw new ArgumentNullException( nameof( reader ) );
+            Throw.CheckNotNullArgument( reader );
             _r = reader;
         }
 
@@ -83,7 +84,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="i">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column as an array of bytes or null if <see cref="IsDBNull(int)"/> is true.</returns>
-        public byte[] GetBytes( int i ) => _r.IsDBNull( i ) ? null : _r.GetSqlBytes( i ).Value;
+        public byte[]? GetBytes( int i ) => _r.IsDBNull( i ) ? null : _r.GetSqlBytes( i ).Value;
 
         /// <summary>
         /// Gets the value of the specified column as a single character.
@@ -123,7 +124,7 @@ namespace CK.SqlServer
         /// </summary>
         /// <param name="i">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        DateTimeOffset GetDateTimeOffset( int i ) => _r.GetDateTimeOffset( i );
+        public DateTimeOffset GetDateTimeOffset( int i ) => _r.GetDateTimeOffset( i );
 
         /// <summary>
         /// Gets the value of the specified column as a <see cref="Decimal"/> object.
@@ -165,7 +166,7 @@ namespace CK.SqlServer
         /// <param name="i">The zero-based column ordinal.</param>
         /// <param name="cancellationToken"></param>
         /// <returns>The returned type object.</returns>
-        public Task<T> GetFieldValueAsync<T>( int i, CancellationToken cancellationToken = default(CancellationToken) ) => _r.GetFieldValueAsync<T>( i, cancellationToken );
+        public Task<T> GetFieldValueAsync<T>( int i, CancellationToken cancellationToken = default ) => _r.GetFieldValueAsync<T>( i, cancellationToken );
 
         /// <summary>
         /// Gets the value of the specified column as a single-precision floating point number.
@@ -280,6 +281,6 @@ namespace CK.SqlServer
         /// <param name="i">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
-        public Task<bool> IsDBNullAsync( int i, CancellationToken cancellationToken = default( CancellationToken ) ) => _r.IsDBNullAsync( i, cancellationToken );
+        public Task<bool> IsDBNullAsync( int i, CancellationToken cancellationToken = default ) => _r.IsDBNullAsync( i, cancellationToken );
     }
 }

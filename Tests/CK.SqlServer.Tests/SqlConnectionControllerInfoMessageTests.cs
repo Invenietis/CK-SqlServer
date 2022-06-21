@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +33,6 @@ namespace CK.SqlServer.Tests
             // Even if the monitor should not catch them, info messages traces will be emitted.
             m.MinimalFilter = LogFilter.Release;
             using( m.CollectEntries( logs => entries = logs, LogLevelFilter.Debug ) )
-            using( m.Output.CreateBridgeTo( TestHelper.Monitor.Output.BridgeTarget ) )
             using( var ctx = new SqlStandardCallContext( m ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
@@ -70,7 +69,7 @@ namespace CK.SqlServer.Tests
             {
             }
 
-            public void OnUnfilteredLog( ActivityMonitorLogData data )
+            public void OnUnfilteredLog( ref ActivityMonitorLogData data )
             {
                 if( data.MaskedLevel == LogLevel.Trace )
                 {
@@ -80,7 +79,7 @@ namespace CK.SqlServer.Tests
         }
 
         [Test]
-        public async Task InfoMessage_are_Threadsafe()
+        public async Task InfoMessage_are_Threadsafe_Async()
         {
             SqlHelper.LogSqlServerInfoMessage = true;
 

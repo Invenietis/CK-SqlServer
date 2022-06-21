@@ -1,7 +1,7 @@
 using CK.Core;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -26,7 +26,11 @@ namespace CK.SqlServer
         /// <param name="cmd">The command to execute.</param>
         /// <param name="innerExecutor">The actual executor.</param>
         /// <returns>The result of the call built by <paramref name="innerExecutor"/>.</returns>
-        T ExecuteQuery<T>(IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, T> innerExecutor);
+        T ExecuteQuery<T>( IActivityMonitor monitor,
+                           SqlConnection connection,
+                           SqlTransaction? transaction,
+                           SqlCommand cmd,
+                           Func<SqlCommand, T> innerExecutor );
 
         /// <summary>
         /// Executes the given command asynchronously, relying on a function to handle the actual command
@@ -41,7 +45,12 @@ namespace CK.SqlServer
         /// <param name="innerExecutor">The actual executor (asynchronous).</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The result of the call built by <paramref name="innerExecutor"/>.</returns>
-        Task<T> ExecuteQueryAsync<T>(IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, CancellationToken, Task<T>> innerExecutor, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor,
+                                      SqlConnection connection,
+                                      SqlTransaction? transaction,
+                                      SqlCommand cmd,
+                                      Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
+                                      CancellationToken cancellationToken = default );
 
     }
 }

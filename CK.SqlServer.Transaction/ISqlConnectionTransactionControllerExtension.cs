@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +13,7 @@ namespace CK.SqlServer
     /// </summary>
     public static class ISqlConnectionTransactionControllerExtension
     {
-        static string _getIsolationLevel = @"SELECT CASE
+        static readonly string _getIsolationLevel = @"SELECT CASE
     WHEN transaction_isolation_level = 1 THEN 'READ UNCOMMITTED'
     WHEN transaction_isolation_level = 2 AND is_read_committed_snapshot_on = 1 THEN 'READ COMMITTED SNAPSHOT'
     WHEN transaction_isolation_level = 2 AND is_read_committed_snapshot_on = 0 THEN 'READ COMMITTED'
@@ -33,14 +33,14 @@ FROM sys.dm_exec_sessions AS s CROSS JOIN sys.databases AS d WHERE  session_id =
         /// <param name="this">This connection controller.</param>
         /// <param name="cancel">Optional cancellation token.</param>
         /// <returns>The isolation level.</returns>
-        public static async Task<IsolationLevel> GetCurrentIsolationLevelAsync( this ISqlConnectionTransactionController @this, CancellationToken cancel = default( CancellationToken ) )
+        public static async Task<IsolationLevel> GetCurrentIsolationLevelAsync( this ISqlConnectionTransactionController @this, CancellationToken cancel = default )
         {
             if( @this.Connection.State != ConnectionState.Open ) return IsolationLevel.Unspecified;
             using( var cmd = new SqlCommand( _getIsolationLevel ) )
             {
                 cmd.Transaction = @this.Transaction;
                 cmd.Connection = @this.Connection;
-                object o = await cmd.ExecuteScalarAsync();
+                object o = await cmd.ExecuteScalarAsync( cancel );
                 return Parse( o == DBNull.Value ? null : (string)o );
             }
         }
@@ -64,18 +64,17 @@ FROM sys.dm_exec_sessions AS s CROSS JOIN sys.databases AS d WHERE  session_id =
             }
         }
 
-        static IsolationLevel Parse( string s )
+        static IsolationLevel Parse( string? s )
         {
-            switch( s )
+            return s switch
             {
-                case "READ UNCOMMITTED": return IsolationLevel.ReadUncommitted;
-                case "READ COMMITTED SNAPSHOT":
-                case "READ COMMITTED": return IsolationLevel.ReadCommitted;
-                case "REPEATABLE READ": return IsolationLevel.RepeatableRead;
-                case "SERIALIZABLE": return IsolationLevel.Serializable;
-                case "SNAPSHOT": return IsolationLevel.Snapshot;
-            }
-            return IsolationLevel.Unspecified;
+                "READ UNCOMMITTED" => IsolationLevel.ReadUncommitted,
+                "READ COMMITTED SNAPSHOT" or "READ COMMITTED" => IsolationLevel.ReadCommitted,
+                "REPEATABLE READ" => IsolationLevel.RepeatableRead,
+                "SERIALIZABLE" => IsolationLevel.Serializable,
+                "SNAPSHOT" => IsolationLevel.Snapshot,
+                _ => IsolationLevel.Unspecified,
+            };
         }
     }
 }

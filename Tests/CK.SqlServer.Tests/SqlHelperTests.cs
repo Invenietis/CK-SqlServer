@@ -3,7 +3,7 @@ using FluentAssertions;
 using NUnit.Framework;
 using System;
 using System.Data;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using static CK.Testing.SqlServerTestHelper;
 
 namespace CK.SqlServer.Tests
@@ -27,8 +27,7 @@ namespace CK.SqlServer.Tests
         public void SqlHelper_SqlValue_works( object value, SqlDbType dbType, string result )
         {
             Guid g = new Guid( "63F7FF58-3101-4099-A18F-6D749B1748C8" );
-            string s = value as string;
-            if( s != null )
+            if( value is string s )
             {
                 if( s == "special:DBNull.Value" ) value = DBNull.Value;
                 if( s == "special:DateTime" ) value = new DateTime( 2016, 11, 5, 20, 0, 43 );

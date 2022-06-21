@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 #if NET461
 using System.Runtime.Serialization;
 #endif
@@ -24,18 +24,6 @@ namespace CK.SqlServer
             : base( message, ex )
         {
         }
-
-#if NET461
-        /// <summary>
-        /// Serialization support.
-        /// </summary>
-        /// <param name="info">The serialization info.</param>
-        /// <param name="c">The context.</param>
-        protected SqlDetailedException( SerializationInfo info, StreamingContext c )
-            : base( info, c )
-        {
-        }
-#endif
 
         /// <summary>
         /// Creates a new SqlDetailedException with a message containing the call
@@ -76,12 +64,12 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the <see cref="SqlException"/> or null if it is not a SqlException.
         /// </summary>
-        public SqlException InnerSqlException => InnerException as SqlException;
+        public SqlException? InnerSqlException => InnerException as SqlException;
 
         /// <summary>
         /// Gets the <see cref="IOException"/> or null if it is not a IOException.
         /// </summary>
-        public IOException InnerIOException => InnerException as IOException;
+        public IOException? InnerIOException => InnerException as IOException;
 
     }
 }

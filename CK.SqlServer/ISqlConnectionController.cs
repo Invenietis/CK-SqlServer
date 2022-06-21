@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -34,7 +34,7 @@ namespace CK.SqlServer
         /// <summary>
         /// Gets the <see cref="SqlTransaction"/> if one has been started, null otherwise. 
         /// </summary>
-        SqlTransaction Transaction { get; }
+        SqlTransaction? Transaction { get; }
 
         /// <summary>
         /// Opens the connection to the database if it were closed.
@@ -54,7 +54,7 @@ namespace CK.SqlServer
         /// when the root <see cref="IDisposableSqlCallContext"/> will be disposed.
         /// </summary>
         /// <returns>A IDisposable that can be disposed.</returns>
-        Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default( CancellationToken ) );
+        Task<IDisposable> ExplicitOpenAsync( CancellationToken cancellationToken = default );
 
         /// <summary>
         /// Gets whether the connection has been explicitly opened at least once.
