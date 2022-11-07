@@ -27,12 +27,11 @@ namespace CK.SqlServer.Tests
         public void InfoMessage_are_monitored_when_SqlHelper_LogSqlServerInfoMessage_is_set_to_true()
         {
             SqlHelper.LogSqlServerInfoMessage = true;
-            IReadOnlyList<ActivityMonitorSimpleCollector.Entry> entries = null;
             var m = new ActivityMonitor( false );
             // The messages are Traced but the monitor level is temporarily set to LogFilter.Trace:
             // Even if the monitor should not catch them, info messages traces will be emitted.
             m.MinimalFilter = LogFilter.Release;
-            using( m.CollectEntries( logs => entries = logs, LogLevelFilter.Debug ) )
+            using( m.CollectEntries( out var entries, LogLevelFilter.Debug ) )
             using( var ctx = new SqlStandardCallContext( m ) )
             {
                 ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
@@ -40,8 +39,8 @@ namespace CK.SqlServer.Tests
                 var cmd = c.Connection.CreateCommand();
                 cmd.CommandText = "print 'Here I am: a print.';";
                 cmd.ExecuteNonQuery();
+                entries.Any( e => e.Text.Contains( "Here I am: a print." ) ).Should().BeTrue();
             }
-            entries.Any( e => e.Text.Contains( "Here I am: a print." ) ).Should().BeTrue();
             SqlHelper.LogSqlServerInfoMessage = false;
         }
 
