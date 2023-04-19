@@ -27,7 +27,7 @@ namespace CK.SqlServer.Tests
         public void InfoMessage_are_monitored_when_SqlHelper_LogSqlServerInfoMessage_is_set_to_true()
         {
             SqlHelper.LogSqlServerInfoMessage = true;
-            var m = new ActivityMonitor( false );
+            var m = new ActivityMonitor( ActivityMonitorOptions.SkipAutoConfiguration );
             // The messages are Traced but the monitor level is temporarily set to LogFilter.Trace:
             // Even if the monitor should not catch them, info messages traces will be emitted.
             m.MinimalFilter = LogFilter.Release;
@@ -84,7 +84,7 @@ namespace CK.SqlServer.Tests
 
             static async Task Do200Prints( ThreadSafeTraceCounter t )
             {
-                var m = new ActivityMonitor( false );
+                var m = new ActivityMonitor( ActivityMonitorOptions.SkipAutoConfiguration );
                 m.Output.RegisterClient( t );
                 using( var ctx = new SqlStandardCallContext( m ) )
                 {
