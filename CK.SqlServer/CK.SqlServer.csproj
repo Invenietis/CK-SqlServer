@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net6.0</TargetFrameworks>
-    <Nullable>enable</Nullable>
     <Description>Contains types and helpers that for Sql Server. Main types are: ISqlCallContext, SqlDetailedException, SqlStandardCallContext.
     </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="20.0.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.1" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="21.0.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
