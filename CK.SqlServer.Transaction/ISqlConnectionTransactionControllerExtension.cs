@@ -6,14 +6,14 @@ using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CK.SqlServer
+namespace CK.SqlServer;
+
+/// <summary>
+/// Extension methods for ISqlConnectionTransactionController.
+/// </summary>
+public static class ISqlConnectionTransactionControllerExtension
 {
-    /// <summary>
-    /// Extension methods for ISqlConnectionTransactionController.
-    /// </summary>
-    public static class ISqlConnectionTransactionControllerExtension
-    {
-        static readonly string _getIsolationLevel = @"SELECT CASE
+    static readonly string _getIsolationLevel = @"SELECT CASE
     WHEN transaction_isolation_level = 1 THEN 'READ UNCOMMITTED'
     WHEN transaction_isolation_level = 2 AND is_read_committed_snapshot_on = 1 THEN 'READ COMMITTED SNAPSHOT'
     WHEN transaction_isolation_level = 2 AND is_read_committed_snapshot_on = 0 THEN 'READ COMMITTED'
@@ -25,56 +25,55 @@ END
 FROM sys.dm_exec_sessions AS s CROSS JOIN sys.databases AS d WHERE  session_id = @@SPID AND d.database_id = DB_ID();";
 
 
-        /// <summary>
-        /// Calls the database and retrieves the current <see cref="IsolationLevel"/> if the
-        /// connection is opened.
-        /// Returns <see cref="IsolationLevel.Unspecified"/> if the database is not opened.
-        /// </summary>
-        /// <param name="this">This connection controller.</param>
-        /// <param name="cancel">Optional cancellation token.</param>
-        /// <returns>The isolation level.</returns>
-        public static async Task<IsolationLevel> GetCurrentIsolationLevelAsync( this ISqlConnectionTransactionController @this, CancellationToken cancel = default )
+    /// <summary>
+    /// Calls the database and retrieves the current <see cref="IsolationLevel"/> if the
+    /// connection is opened.
+    /// Returns <see cref="IsolationLevel.Unspecified"/> if the database is not opened.
+    /// </summary>
+    /// <param name="this">This connection controller.</param>
+    /// <param name="cancel">Optional cancellation token.</param>
+    /// <returns>The isolation level.</returns>
+    public static async Task<IsolationLevel> GetCurrentIsolationLevelAsync( this ISqlConnectionTransactionController @this, CancellationToken cancel = default )
+    {
+        if( @this.Connection.State != ConnectionState.Open ) return IsolationLevel.Unspecified;
+        using( var cmd = new SqlCommand( _getIsolationLevel ) )
         {
-            if( @this.Connection.State != ConnectionState.Open ) return IsolationLevel.Unspecified;
-            using( var cmd = new SqlCommand( _getIsolationLevel ) )
-            {
-                cmd.Transaction = @this.Transaction;
-                cmd.Connection = @this.Connection;
-                object o = await cmd.ExecuteScalarAsync( cancel );
-                return Parse( o == DBNull.Value ? null : (string)o );
-            }
+            cmd.Transaction = @this.Transaction;
+            cmd.Connection = @this.Connection;
+            object o = await cmd.ExecuteScalarAsync( cancel );
+            return Parse( o == DBNull.Value ? null : (string)o );
         }
+    }
 
-        /// <summary>
-        /// Calls the database and retrieves the current <see cref="IsolationLevel"/> if the
-        /// connection is opened.
-        /// Returns <see cref="IsolationLevel.Unspecified"/> if the database is not opened.
-        /// </summary>
-        /// <param name="this">This transaction aware controller.</param>
-        /// <returns>The isolation level.</returns>
-        public static IsolationLevel GetCurrentIsolationLevel( this ISqlConnectionTransactionController @this )
+    /// <summary>
+    /// Calls the database and retrieves the current <see cref="IsolationLevel"/> if the
+    /// connection is opened.
+    /// Returns <see cref="IsolationLevel.Unspecified"/> if the database is not opened.
+    /// </summary>
+    /// <param name="this">This transaction aware controller.</param>
+    /// <returns>The isolation level.</returns>
+    public static IsolationLevel GetCurrentIsolationLevel( this ISqlConnectionTransactionController @this )
+    {
+        if( @this.Connection.State != ConnectionState.Open ) return IsolationLevel.Unspecified;
+        using( var cmd = new SqlCommand( _getIsolationLevel ) )
         {
-            if( @this.Connection.State != ConnectionState.Open ) return IsolationLevel.Unspecified;
-            using( var cmd = new SqlCommand( _getIsolationLevel ) )
-            {
-                cmd.Transaction = @this.Transaction;
-                cmd.Connection = @this.Connection;
-                object o = cmd.ExecuteScalar();
-                return Parse( o == DBNull.Value ? null : (string)o );
-            }
+            cmd.Transaction = @this.Transaction;
+            cmd.Connection = @this.Connection;
+            object o = cmd.ExecuteScalar();
+            return Parse( o == DBNull.Value ? null : (string)o );
         }
+    }
 
-        static IsolationLevel Parse( string? s )
+    static IsolationLevel Parse( string? s )
+    {
+        return s switch
         {
-            return s switch
-            {
-                "READ UNCOMMITTED" => IsolationLevel.ReadUncommitted,
-                "READ COMMITTED SNAPSHOT" or "READ COMMITTED" => IsolationLevel.ReadCommitted,
-                "REPEATABLE READ" => IsolationLevel.RepeatableRead,
-                "SERIALIZABLE" => IsolationLevel.Serializable,
-                "SNAPSHOT" => IsolationLevel.Snapshot,
-                _ => IsolationLevel.Unspecified,
-            };
-        }
+            "READ UNCOMMITTED" => IsolationLevel.ReadUncommitted,
+            "READ COMMITTED SNAPSHOT" or "READ COMMITTED" => IsolationLevel.ReadCommitted,
+            "REPEATABLE READ" => IsolationLevel.RepeatableRead,
+            "SERIALIZABLE" => IsolationLevel.Serializable,
+            "SNAPSHOT" => IsolationLevel.Snapshot,
+            _ => IsolationLevel.Unspecified,
+        };
     }
 }
