@@ -154,7 +154,7 @@ public class SqlConnectionControllerTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
         {
             object? o = await ctx[TestHelper.MasterConnectionString].ExecuteScalarAsync( new SqlCommand( "some text" ) );
-            o.ShouldBe( null );
+            o.ShouldBeNull();
         }
     }
 
@@ -164,7 +164,7 @@ public class SqlConnectionControllerTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
         {
             ctx[TestHelper.MasterConnectionString].ExecuteScalar( new SqlCommand( "some text" ) )
-                .ShouldBe( null );
+                .ShouldBeNull();
         }
     }
 
