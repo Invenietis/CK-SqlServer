@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
+using CK.Core;
 
 namespace CK.SqlServer.Transaction.Tests;
 
@@ -25,10 +26,10 @@ public class BasicTransactionTests
     {
         using( var c = new SqlConnection( TestHelper.GetConnectionString() ) )
         {
-            c.Invoking( _ => _.Open() ).Should().NotThrow();
-            c.Invoking( _ => _.Open() ).Should().Throw<InvalidOperationException>();
-            c.Invoking( _ => _.Close() ).Should().NotThrow();
-            c.Invoking( _ => _.Close() ).Should().NotThrow();
+            Util.Invokable( c.Open ).ShouldNotThrow();
+            Util.Invokable( c.Open ).ShouldThrow<InvalidOperationException>();
+            Util.Invokable( c.Close ).ShouldNotThrow();
+            Util.Invokable( c.Close ).ShouldNotThrow();
         }
     }
 
@@ -37,7 +38,7 @@ public class BasicTransactionTests
     {
         using( var c = new SqlConnection( TestHelper.GetConnectionString() ) )
         {
-            c.Invoking( _ => _.BeginTransaction() ).Should().Throw<InvalidOperationException>();
+            Util.Invokable( c.BeginTransaction ).ShouldThrow<InvalidOperationException>();
         }
     }
 
@@ -49,7 +50,7 @@ public class BasicTransactionTests
         {
             using( var t1 = c.BeginTransaction() )
             {
-                c.Invoking( _ => _.BeginTransaction() ).Should().Throw<InvalidOperationException>();
+                Util.Invokable( c.BeginTransaction ).ShouldThrow<InvalidOperationException>();
             }
         }
     }
@@ -63,7 +64,7 @@ public class BasicTransactionTests
         {
             var t = c.BeginTransaction();
             cmd.Connection = c;
-            cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
+            Util.Invokable( cmd.ExecuteScalar ).ShouldThrow<InvalidOperationException>();
         }
     }
 
@@ -78,7 +79,7 @@ public class BasicTransactionTests
             var t1 = c1.BeginTransaction();
             cmd.Connection = c2;
             cmd.Transaction = t1;
-            cmd.Invoking( _ => _.ExecuteScalar() ).Should().Throw<InvalidOperationException>();
+            Util.Invokable( cmd.ExecuteScalar ).ShouldThrow<InvalidOperationException>();
         }
     }
 

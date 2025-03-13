@@ -1,5 +1,5 @@
 using CK.Core;
-using FluentAssertions;
+using Shouldly;
 using NUnit.Framework;
 using System;
 using System.Data;
@@ -8,6 +8,7 @@ using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
 using static CK.Testing.SqlServerTestHelper;
+using CK.Testing;
 
 namespace CK.SqlServer.Tests;
 
@@ -27,21 +28,21 @@ public class SqlConnectionControllerTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             var d1 = c.ExplicitOpen();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             var d2 = c.ExplicitOpen();
             var d3 = c.ExplicitOpen();
-            d1.Should().NotBeNull();
-            d2.Should().NotBeNull();
-            d3.Should().NotBeNull();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            d1.ShouldNotBeNull();
+            d2.ShouldNotBeNull();
+            d3.ShouldNotBeNull();
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             d1.Dispose();
             d1.Dispose();
             d2.Dispose();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             d3.Dispose();
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
         }
     }
 
@@ -51,21 +52,21 @@ public class SqlConnectionControllerTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             var d1 = await c.ExplicitOpenAsync();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             var d2 = await c.ExplicitOpenAsync();
             var d3 = await c.ExplicitOpenAsync();
-            d1.Should().NotBeNull();
-            d2.Should().NotBeNull();
-            d3.Should().NotBeNull();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            d1.ShouldNotBeNull();
+            d2.ShouldNotBeNull();
+            d3.ShouldNotBeNull();
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             d1.Dispose();
             d1.Dispose();
             d2.Dispose();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            c.Connection.State.ShouldBe( ConnectionState.Open );
             d3.Dispose();
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
         }
     }
 
@@ -78,7 +79,7 @@ public class SqlConnectionControllerTests
             if( wasClosed ) con.Open();
             var cmd = con.CreateCommand();
             cmd.CommandText = "select 1;";
-            cmd.ExecuteScalar().Should().Be( 1 );
+            cmd.ExecuteScalar().ShouldBe( 1 );
             if( wasClosed ) con.Close();
         }
 
@@ -88,15 +89,15 @@ public class SqlConnectionControllerTests
 
             // Closed.
             DoSomething( c.Connection );
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
 
             using( c.ExplicitOpen() )
             {
-                c.Connection.State.Should().Be( ConnectionState.Open );
+                c.Connection.State.ShouldBe( ConnectionState.Open );
                 DoSomething( c.Connection );
-                c.Connection.State.Should().Be( ConnectionState.Open );
+                c.Connection.State.ShouldBe( ConnectionState.Open );
             }
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
         }
     }
 
@@ -108,38 +109,42 @@ public class SqlConnectionControllerTests
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
             directRef = c.Connection;
-            await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
-            c.Connection.State.Should().Be( ConnectionState.Open );
-            c.Connection.Invoking( oCon => oCon.Close() ).Should().NotThrow();
-            await c.Connection.Awaiting( oCon => oCon.OpenAsync() ).Should().NotThrowAsync();
-            c.Connection.State.Should().Be( ConnectionState.Open );
+            await Util.Awaitable( c.Connection.OpenAsync ).ShouldNotThrowAsync();
+            c.Connection.State.ShouldBe( ConnectionState.Open );
+            Util.Invokable( c.Connection.Close ).ShouldNotThrow();
+            await Util.Awaitable( c.Connection.OpenAsync ).ShouldNotThrowAsync();
+            c.Connection.State.ShouldBe( ConnectionState.Open );
         }
-        directRef.State.Should().Be( ConnectionState.Closed );
+        directRef.State.ShouldBe( ConnectionState.Closed );
     }
 
     class ExternalExecutor : ISqlCommandExecutor
     {
-        public T ExecuteQuery<T>( IActivityMonitor monitor, SqlConnection connection, SqlTransaction transaction, SqlCommand cmd, Func<SqlCommand, T> innerExecutor )
+        public T ExecuteQuery<T>( IActivityMonitor monitor,
+                                  SqlConnection connection,
+                                  SqlTransaction? transaction,
+                                  SqlCommand cmd,
+                                  Func<SqlCommand, T> innerExecutor )
         {
-            monitor.Should().BeSameAs( TestHelper.Monitor );
-            connection.Should().NotBeNull();
-            transaction.Should().BeNull( "We don't have transaction here." );
-            cmd.CommandText.Should().Be( "some text" );
-            return default;
+            monitor.ShouldBeSameAs( TestHelper.Monitor );
+            connection.ShouldNotBeNull();
+            transaction.ShouldBeNull( "We don't have transaction here." );
+            cmd.CommandText.ShouldBe( "some text" );
+            return default!;
         }
 
         public Task<T> ExecuteQueryAsync<T>( IActivityMonitor monitor,
                                              SqlConnection connection,
-                                             SqlTransaction transaction,
+                                             SqlTransaction? transaction,
                                              SqlCommand cmd,
                                              Func<SqlCommand, CancellationToken, Task<T>> innerExecutor,
                                              CancellationToken cancellationToken = default )
         {
-            monitor.Should().BeSameAs( TestHelper.Monitor );
-            connection.Should().NotBeNull();
-            transaction.Should().BeNull( "We don't have transaction here." );
-            cmd.CommandText.Should().Be( "some text" );
-            return Task.FromResult<T>( default );
+            monitor.ShouldBeSameAs( TestHelper.Monitor );
+            connection.ShouldNotBeNull();
+            transaction.ShouldBeNull( "We don't have transaction here." );
+            cmd.CommandText.ShouldBe( "some text" );
+            return Task.FromResult<T>( default! );
         }
     }
 
@@ -148,8 +153,8 @@ public class SqlConnectionControllerTests
     {
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
         {
-            object o = await ctx[TestHelper.MasterConnectionString].ExecuteScalarAsync( new SqlCommand( "some text" ) );
-            o.Should().Be( null );
+            object? o = await ctx[TestHelper.MasterConnectionString].ExecuteScalarAsync( new SqlCommand( "some text" ) );
+            o.ShouldBe( null );
         }
     }
 
@@ -159,7 +164,7 @@ public class SqlConnectionControllerTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor, new ExternalExecutor() ) )
         {
             ctx[TestHelper.MasterConnectionString].ExecuteScalar( new SqlCommand( "some text" ) )
-                .Should().Be( null );
+                .ShouldBe( null );
         }
     }
 
@@ -194,7 +199,7 @@ public class SqlConnectionControllerTests
         await CallCatchAsync<SqlDetailedException>( "select 1;", "Server=serverOfNothing;Database=ThisIsNotADatabase;Integrated Security=SSPI" );
     }
 
-    static async Task CallCatchAsync<TException>( string cmd, string connectionString = null ) where TException : Exception
+    static async Task CallCatchAsync<TException>( string cmd, string? connectionString = null ) where TException : Exception
     {
         using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
         using( var command = new SqlCommand( cmd ) )
@@ -217,21 +222,13 @@ public class SqlConnectionControllerTests
         }
     }
 
-    static void SyncCallCatch<TException>( string cmd, string connectionString = null )
+    static void SyncCallCatch<TException>( string cmd, string? connectionString = null ) where TException : Exception
     {
         using( IDisposableSqlCallContext c = new SqlStandardCallContext( TestHelper.Monitor ) )
         using( var command = new SqlCommand( cmd ) )
         {
             ISqlConnectionController con = c[connectionString ?? TestHelper.GetConnectionString()];
-            try
-            {
-                con.ExecuteNonQuery( command );
-                Assert.Fail( $"Should have raised {typeof( TException ).Name}." );
-            }
-            catch( Exception ex )
-            {
-                Assert.That( ex, Is.InstanceOf<TException>() );
-            }
+            Util.Invokable( () => con.ExecuteNonQuery( command ) ).ShouldThrow<TException>();
         }
     }
 

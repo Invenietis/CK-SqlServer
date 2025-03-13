@@ -1,9 +1,11 @@
-using FluentAssertions;
+using Shouldly;
+using CK.Testing;
 using NUnit.Framework;
 using System;
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
+using CK.Core;
 using static CK.Testing.SqlServerTestHelper;
 
 namespace CK.SqlServer.Tests;
@@ -32,18 +34,18 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
 
             c.ExecuteNonQuery( create );
-            c.ExecuteScalar( scalar ).Should().Be( "Three" );
+            c.ExecuteScalar( scalar ).ShouldBe( "Three" );
             var rowResult = c.ExecuteSingleRow( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-            rowResult.Item1.Should().Be( 1 );
-            rowResult.Item2.Should().Be( "One" );
+            rowResult.Item1.ShouldBe( 1 );
+            rowResult.Item2.ShouldBe( "One" );
             var readerResult = c.ExecuteReader( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-            readerResult.Should().HaveCount( 3 );
-            readerResult[0].Item1.Should().Be( 1 );
-            readerResult[1].Item2.Should().Be( "Two" );
-            readerResult[2].Item2.Should().Be( "Three" );
+            readerResult.Count.ShouldBe( 3 );
+            readerResult[0].Item1.ShouldBe( 1 );
+            readerResult[1].Item2.ShouldBe( "Two" );
+            readerResult[2].Item2.ShouldBe( "Three" );
             c.ExecuteNonQuery( clean );
         }
     }
@@ -62,17 +64,19 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             await c.ExecuteNonQueryAsync( create );
-            (await c.ExecuteScalarAsync( scalar )).Should().Be( "Three" );
-            var rowResult = await c.ExecuteSingleRowAsync( row, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-            rowResult.Item1.Should().Be( 1 );
-            rowResult.Item2.Should().Be( "One" );
-            var readerResult = await c.ExecuteReaderAsync( reader, r => Tuple.Create( r.GetInt32( 0 ), r.GetString( 1 ) ) );
-            readerResult.Should().HaveCount( 3 );
-            readerResult[0].Item1.Should().Be( 1 );
-            readerResult[1].Item2.Should().Be( "Two" );
-            readerResult[2].Item2.Should().Be( "Three" );
+            (await c.ExecuteScalarAsync( scalar )).ShouldBe( "Three" );
+            // Using ValueTuples.
+            var rowResult = await c.ExecuteSingleRowAsync( row, r => (r!.GetInt32( 0 ), r.GetString( 1 )) );
+            rowResult.Item1.ShouldBe( 1 );
+            rowResult.Item2.ShouldBe( "One" );
+            // Using ref Tuples.
+            var readerResult = await c.ExecuteReaderAsync( reader, r => (r.GetInt32( 0 ), r.GetString( 1 )) );
+            readerResult.Count.ShouldBe( 3 );
+            readerResult[0].Item1.ShouldBe( 1 );
+            readerResult[1].Item2.ShouldBe( "Two" );
+            readerResult[2].Item2.ShouldBe( "Three" );
             await c.ExecuteNonQueryAsync( clean );
         }
     }
@@ -84,10 +88,10 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             var c = ctx[TestHelper.MasterConnectionString];
-            c.Invoking( co => co.ExecuteNonQuery( bug ) ).Should().Throw<SqlDetailedException>();
-            c.Invoking( co => co.ExecuteScalar( bug ) ).Should().Throw<SqlDetailedException>();
-            c.Invoking( co => co.ExecuteSingleRow( bug, r => 0 ) ).Should().Throw<SqlDetailedException>();
-            c.Invoking( co => co.ExecuteReader( bug, r => 0 ) ).Should().Throw<SqlDetailedException>();
+            Util.Invokable( () => c.ExecuteNonQuery( bug ) ).ShouldThrow<SqlDetailedException>();
+            Util.Invokable( () => c.ExecuteScalar( bug ) ).ShouldThrow<SqlDetailedException>();
+            Util.Invokable( () => c.ExecuteSingleRow( bug, r => 0 ) ).ShouldThrow<SqlDetailedException>();
+            Util.Invokable( () => c.ExecuteReader( bug, r => 0 ) ).ShouldThrow<SqlDetailedException>();
         }
     }
 
@@ -98,10 +102,10 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext( TestHelper.Monitor ) )
         {
             var c = ctx[TestHelper.MasterConnectionString];
-            await c.Awaiting( co => co.ExecuteNonQueryAsync( bug ) ).Should().ThrowAsync<SqlDetailedException>();
-            await c.Awaiting( co => co.ExecuteScalarAsync( bug ) ).Should().ThrowAsync<SqlDetailedException>();
-            await c.Awaiting( co => co.ExecuteSingleRowAsync( bug, r => 0 ) ).Should().ThrowAsync<SqlDetailedException>();
-            await c.Awaiting( co => co.ExecuteReaderAsync( bug, r => 0 ) ).Should().ThrowAsync<SqlDetailedException>();
+            await Util.Awaitable( () => c.ExecuteNonQueryAsync( bug ) ).ShouldThrowAsync<SqlDetailedException>();
+            await Util.Awaitable( () => c.ExecuteScalarAsync( bug ) ).ShouldThrowAsync<SqlDetailedException>();
+            await Util.Awaitable( () => c.ExecuteSingleRowAsync( bug, r => 0 ) ).ShouldThrowAsync<SqlDetailedException>();
+            await Util.Awaitable( () => c.ExecuteReaderAsync( bug, r => 0 ) ).ShouldThrowAsync<SqlDetailedException>();
         }
     }
 
@@ -117,33 +121,33 @@ public class ISqlConnectionControllerExtensionTests
 
             SqlCommand cFailXml = new SqlCommand( "select * from sys.objects for xml path" );
             read = (string)c.ExecuteScalar( cFailXml );
-            read.Should().HaveLength( 2033, "2033 is the upper limit for ExecuteScalar." );
+            read.Length.ShouldBe( 2033, "2033 is the upper limit for ExecuteScalar." );
 
             SqlCommand cFailJson = new SqlCommand( "select * from sys.objects for json auto" );
             read = (string)c.ExecuteScalar( cFailJson );
-            read.Should().HaveLength( 2033, "2033 is the upper limit for ExecuteScalar." );
+            read.Length.ShouldBe( 2033, "2033 is the upper limit for ExecuteScalar." );
 
             // Using convert works for Json and Xml.
             SqlCommand cConvJson = new SqlCommand( "select convert( nvarchar(max), (select * from sys.objects for json auto))" );
             string readJsonConvert = (string)c.ExecuteScalar( cConvJson );
-            readJsonConvert.Length.Should().BeGreaterThan( 20 * 1024 );
+            readJsonConvert.Length.ShouldBeGreaterThan( 20 * 1024 );
 
             SqlCommand cConvXml = new SqlCommand( "select convert( nvarchar(max), (select * from sys.objects for xml path))" );
             string readXmlConvert = (string)c.ExecuteScalar( cConvXml );
-            readXmlConvert.Length.Should().BeGreaterThan( 20 * 1024 );
+            readXmlConvert.Length.ShouldBeGreaterThan( 20 * 1024 );
 
             // Using the SqlDataReader works for Json and Xml.
             SqlCommand cReaderJson = new SqlCommand( "select 1, Json = (select * from sys.objects for json auto)" );
             string readJsonViaReader = c.ExecuteSingleRow( cReaderJson, r => r.GetString( 1 ) );
-            readJsonViaReader.Length.Should().BeGreaterThan( 20 * 1024 );
+            readJsonViaReader.Length.ShouldBeGreaterThan( 20 * 1024 );
 
             Assert.That( readJsonViaReader, Is.EqualTo( readJsonConvert ) );
 
             SqlCommand cReaderXml = new SqlCommand( "select Xml = (select * from sys.objects for xml path)" );
             string readXmlViaReader = c.ExecuteSingleRow( cReaderXml, r => r.GetString( 0 ) );
-            readXmlViaReader.Length.Should().BeGreaterThan( 20 * 1024 );
+            readXmlViaReader.Length.ShouldBeGreaterThan( 20 * 1024 );
 
-            readXmlViaReader.Should().Be( readXmlConvert );
+            readXmlViaReader.ShouldBe( readXmlConvert );
         }
     }
 
@@ -154,30 +158,30 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext() )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             using( c.ExplicitOpen() )
             {
-                c.Connection.State.Should().Be( ConnectionState.Open );
-                ((int)c.ExecuteScalar( cmd )).Should().BeGreaterThan( 0 );
+                c.Connection.State.ShouldBe( ConnectionState.Open );
+                ((int)c.ExecuteScalar( cmd )).ShouldBeGreaterThan( 0 );
             }
-            c.Connection.State.Should().Be( ConnectionState.Closed );
-            ((int)await c.ExecuteScalarAsync( cmd )).Should().BeGreaterThan( 0 );
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
+            ((int)await c.ExecuteScalarAsync( cmd )).ShouldBeGreaterThan( 0 );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             cmd.CommandText = "select count(*) from sys.objects where name='no-object-here'";
             using( await c.ExplicitOpenAsync() )
             {
-                c.Connection.State.Should().Be( ConnectionState.Open );
-                ((int)await c.ExecuteScalarAsync( cmd )).Should().Be( 0 );
+                c.Connection.State.ShouldBe( ConnectionState.Open );
+                ((int)await c.ExecuteScalarAsync( cmd )).ShouldBe( 0 );
             }
-            c.Connection.State.Should().Be( ConnectionState.Closed );
-            ((int)await c.ExecuteScalarAsync( cmd )).Should().Be( 0 );
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
+            ((int)await c.ExecuteScalarAsync( cmd )).ShouldBe( 0 );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             cmd.CommandText = "select name from sys.tables where name='no-object-here'";
             using( await c.ExplicitOpenAsync() )
             {
-                (await c.ExecuteScalarAsync( cmd )).Should().BeNull();
+                (await c.ExecuteScalarAsync( cmd )).ShouldBeNull();
             }
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
         }
     }
 
@@ -190,26 +194,26 @@ public class ISqlConnectionControllerExtensionTests
         using( var ctx = new SqlStandardCallContext() )
         {
             ISqlConnectionController c = ctx[TestHelper.GetConnectionString()];
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
             using( await c.ExplicitOpenAsync() )
             {
-                c.Connection.State.Should().Be( ConnectionState.Open );
+                c.Connection.State.ShouldBe( ConnectionState.Open );
 
                 int count = await c.ExecuteSingleRowAsync( cmd, r =>
                 {
                     if( mode == "NoRow" )
                     {
-                        r.Should().BeNull();
+                        r.ShouldBeNull();
                         return 0;
                     }
                     else
                     {
-                        r.Should().NotBeNull();
+                        r.ShouldNotBeNull();
                         return 1;
                     }
                 } );
             }
-            c.Connection.State.Should().Be( ConnectionState.Closed );
+            c.Connection.State.ShouldBe( ConnectionState.Closed );
         }
 
     }

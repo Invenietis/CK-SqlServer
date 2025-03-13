@@ -1,5 +1,5 @@
 using CK.Core;
-using FluentAssertions;
+using Shouldly;
 using NUnit.Framework;
 using System;
 using System.Data;
@@ -54,57 +54,57 @@ public class SqlHelperTests
 
             cmd.CommandText = "select convert( datetime2(2), '00010101' )";
             object oMinDate = cmd.ExecuteScalar();
-            oMinDate.Should().BeOfType<DateTime>();
-            oMinDate.Should().Be( Util.UtcMinValue );
-            SqlHelper.IsUtcMinValue( (DateTime)oMinDate ).Should().BeTrue();
+            oMinDate.ShouldBeOfType<DateTime>();
+            oMinDate.ShouldBe( Util.UtcMinValue );
+            SqlHelper.IsUtcMinValue( (DateTime)oMinDate ).ShouldBeTrue();
 
             cmd.CommandText = "select convert( datetime2(7), '99991231 23:59:59.9999999' )";
             object oMaxDate = cmd.ExecuteScalar();
-            oMaxDate.Should().BeOfType<DateTime>();
-            oMaxDate.Should().Be( Util.UtcMaxValue );
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 7 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 6 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 5 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 4 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 3 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 2 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 1 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 0 ).Should().BeTrue();
+            oMaxDate.ShouldBeOfType<DateTime>();
+            oMaxDate.ShouldBe( Util.UtcMaxValue );
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 7 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 6 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 5 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 4 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 3 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 2 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 1 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 0 ).ShouldBeTrue();
             Assert.Throws<ArgumentOutOfRangeException>( () => SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, -1 ) );
             Assert.Throws<ArgumentOutOfRangeException>( () => SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate, 8 ) );
 
             cmd.CommandText = "select convert( datetime2(2), '99991231 23:59:59.9999999' )";
             object oMaxDate2 = cmd.ExecuteScalar();
-            oMaxDate2.Should().BeOfType<DateTime>();
-            oMaxDate2.Should().NotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
-            oMaxDate2.Should().Be( Util.UtcMaxValue.AddTicks( -99999 ) );
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 7 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 6 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 5 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 4 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 3 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 2 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 1 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 0 ).Should().BeTrue();
+            oMaxDate2.ShouldBeOfType<DateTime>();
+            oMaxDate2.ShouldNotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
+            oMaxDate2.ShouldBe( Util.UtcMaxValue.AddTicks( -99999 ) );
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 7 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 6 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 5 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 4 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 3 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 2 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 1 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate2, 0 ).ShouldBeTrue();
 
             cmd.CommandText = "select convert( datetime2(0), '99991231 23:59:59.9999999' )";
             object oMaxDate0 = cmd.ExecuteScalar();
-            oMaxDate0.Should().BeOfType<DateTime>();
-            oMaxDate0.Should().NotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
-            oMaxDate0.Should().Be( SqlHelper.UtcMaxValuePrecision0 );
-            SqlHelper.UtcMaxValuePrecision0.Should().Be( Util.UtcMaxValue.AddTicks( -9999999 ) );
+            oMaxDate0.ShouldBeOfType<DateTime>();
+            oMaxDate0.ShouldNotBe( Util.UtcMaxValue, "Unfortunately, 99991231 23:59:59.99 is NOT the same..." );
+            oMaxDate0.ShouldBe( SqlHelper.UtcMaxValuePrecision0 );
+            SqlHelper.UtcMaxValuePrecision0.ShouldBe( Util.UtcMaxValue.AddTicks( -9999999 ) );
 
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0 ).Should().BeTrue();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 7 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 6 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 5 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 4 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 3 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 2 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 1 ).Should().BeFalse();
-            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 0 ).Should().BeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0 ).ShouldBeTrue();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 7 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 6 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 5 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 4 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 3 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 2 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 1 ).ShouldBeFalse();
+            SqlHelper.IsUtcMaxValue( (DateTime)oMaxDate0, 0 ).ShouldBeTrue();
         }
     }
 
@@ -117,20 +117,20 @@ public class SqlHelperTests
         var c = new SqlConnectionStringBuilder( s );
         c["Password"] = null;
         c["User ID"] = null;
-        c.ToString().Should().Be( "Data Source=.;Initial Catalog=test" );
+        c.ToString().ShouldBe( "Data Source=.;Initial Catalog=test" );
 
         // The SqlHelper.RemoveSensitiveInformations( string connectionString ) must be protected.
-        FluentActions.Invoking( () => new SqlConnectionStringBuilder( "something totally fucked." ) ).Should().Throw<ArgumentException>();
+        Util.Invokable( () => new SqlConnectionStringBuilder( "something totally fucked." ) ).ShouldThrow<ArgumentException>();
 
 
         SqlHelper.RemoveSensitiveInformations( "Server=14.247.78.98; Pwd=pouf; uid=user; database=mydb" )
-                 .Should().Be( "Data Source=14.247.78.98;Initial Catalog=mydb" );
+                 .ShouldBe( "Data Source=14.247.78.98;Initial Catalog=mydb" );
 
         SqlHelper.RemoveSensitiveInformations( null )
-                 .Should().StartWith( "ArgumentException: " );
+                 .ShouldStartWith( "ArgumentException: " );
 
         SqlHelper.RemoveSensitiveInformations( "something totally fucked" )
-                 .Should().StartWith( "ArgumentException: " );
+                 .ShouldStartWith( "ArgumentException: " );
 
     }
 

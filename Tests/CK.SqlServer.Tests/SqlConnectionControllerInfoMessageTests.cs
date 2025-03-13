@@ -1,5 +1,5 @@
 using CK.Core;
-using FluentAssertions;
+using Shouldly;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -39,7 +39,7 @@ public class SqlConnectionControllerInfoMessageTests
             var cmd = c.Connection.CreateCommand();
             cmd.CommandText = "print 'Here I am: a print.';";
             cmd.ExecuteNonQuery();
-            entries.Any( e => e.Text.Contains( "Here I am: a print." ) ).Should().BeTrue();
+            entries.Any( e => e.Text.Contains( "Here I am: a print." ) ).ShouldBeTrue();
         }
         SqlHelper.LogSqlServerInfoMessage = false;
     }
@@ -104,7 +104,7 @@ public class SqlConnectionControllerInfoMessageTests
         var tasks = Enumerable.Range( 0, 100 ).Select( _ => Do200PrintsAsync( c ) ).ToArray();
         await Task.WhenAll( tasks );
 
-        c.Count.Should().Be( 100 * 200 );
+        c.Count.ShouldBe( 100 * 200 );
 
         SqlHelper.LogSqlServerInfoMessage = false;
     }

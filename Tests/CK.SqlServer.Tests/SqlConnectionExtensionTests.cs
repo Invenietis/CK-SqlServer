@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using NUnit.Framework;
 using System;
 using System.Data;
@@ -23,13 +23,13 @@ public class SqlConnectionExtensionTests
     {
         using( var oCon = new SqlConnection( TestHelper.GetConnectionString() ) )
         {
-            oCon.State.Should().Be( ConnectionState.Closed );
+            oCon.State.ShouldBe( ConnectionState.Closed );
             using( var disposer = oCon.EnsureOpen() )
             {
-                disposer.Should().NotBeNull();
-                oCon.EnsureOpen().Should().BeNull();
+                disposer.ShouldNotBeNull();
+                oCon.EnsureOpen().ShouldBeNull();
             }
-            oCon.State.Should().Be( ConnectionState.Closed );
+            oCon.State.ShouldBe( ConnectionState.Closed );
         }
 
     }
@@ -39,13 +39,13 @@ public class SqlConnectionExtensionTests
     {
         using( var oCon = new SqlConnection( TestHelper.GetConnectionString() ) )
         {
-            oCon.State.Should().Be( ConnectionState.Closed );
+            oCon.State.ShouldBe( ConnectionState.Closed );
             using( var disposer = await oCon.EnsureOpenAsync() )
             {
-                disposer.Should().NotBeNull();
-                (await oCon.EnsureOpenAsync()).Should().BeNull();
+                disposer.ShouldNotBeNull();
+                (await oCon.EnsureOpenAsync()).ShouldBeNull();
             }
-            oCon.State.Should().Be( ConnectionState.Closed );
+            oCon.State.ShouldBe( ConnectionState.Closed );
         }
     }
 }
