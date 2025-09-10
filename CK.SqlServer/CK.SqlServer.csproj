@@ -1,12 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Description>Contains types and helpers that for Sql Server. Main types are: ISqlCallContext, SqlDetailedException, SqlStandardCallContext.
     </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Abstractions" Version="27.0.1--0025-develop" />
-    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="24.0.1--0013-develop" />
+    <PackageReference Include="CK.Abstractions" Version="27.0.1--0027-develop" />
+    <PackageReference Include="CK.ActivityMonitor.SimpleSender" Version="24.0.1--0016-develop" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
   <ItemGroup>
