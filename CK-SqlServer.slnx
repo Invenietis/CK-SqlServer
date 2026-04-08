@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="appveyor.yml" />
+    <File Path="Directory.Build.props" />
+    <File Path="NuGet.config" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CK.SqlServer.Tests/CK.SqlServer.Tests.csproj" />
+    <Project Path="Tests/CK.SqlServer.Transaction.Tests/CK.SqlServer.Transaction.Tests.csproj" />
+  </Folder>
+  <Project Path="CK.SqlServer.Transaction/CK.SqlServer.Transaction.csproj" />
+  <Project Path="CK.SqlServer/CK.SqlServer.csproj" />
+</Solution>
